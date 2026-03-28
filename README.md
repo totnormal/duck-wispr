@@ -45,7 +45,8 @@ Edit `~/.config/open-wispr/config.json`:
   "language": "en",
   "spokenPunctuation": false,
   "maxRecordings": 0,
-  "toggleMode": false
+  "toggleMode": false,
+  "inputMethod": "cgevent"
 }
 ```
 
