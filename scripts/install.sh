@@ -1,6 +1,6 @@
 #!/bin/bash
+set -euo pipefail
 
-# ── Colors & formatting ──────────────────────────────────────────────
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
@@ -8,261 +8,403 @@ BLUE='\033[0;34m'
 DIM='\033[2m'
 BOLD='\033[1m'
 NC='\033[0m'
-
 SPINNER_FRAMES=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+
+REPO_URL="https://github.com/totnormal/open-wispr.git"
+RAW_BASE="https://raw.githubusercontent.com/totnormal/open-wispr/main"
+BREW_INSTALL_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+MODEL_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
+APP_NAME="OpenWispr.app"
+APP_DEST="$HOME/Applications/${APP_NAME}"
+APP_BINARY="$APP_DEST/Contents/MacOS/open-wispr"
+LAUNCH_AGENT_LABEL="com.openwispr.dictation"
+LAUNCH_AGENT="$HOME/Library/LaunchAgents/${LAUNCH_AGENT_LABEL}.plist"
+CONFIG_DIR="$HOME/.config/open-wispr"
+MODEL_DIR="$CONFIG_DIR/models"
+MODEL_FILE="$MODEL_DIR/ggml-small.bin"
+CONFIG_FILE="$CONFIG_DIR/config.json"
+WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/open-wispr-install.XXXXXX")"
+REPO_DIR="$WORKDIR/open-wispr"
+LOG_FILE="$WORKDIR/install.log"
+APP_LOG="$WORKDIR/open-wispr-first-run.log"
 SPIN_PID=""
-LOG=/opt/homebrew/var/log/open-wispr.log
+INSTALL_FAILED=0
 
 cleanup() {
-    stop_spin
+    stop_spinner
+    if (( INSTALL_FAILED == 0 )); then
+        rm -rf "$WORKDIR"
+    else
+        info "Installer log: ${BOLD}${LOG_FILE}${NC}"
+    fi
 }
 trap cleanup EXIT
 
-step() {
-    printf "\n  ${BLUE}${BOLD}%s${NC}\n" "$1"
+print_header() {
+    printf "\n${BOLD}open-wispr installer${NC} ${DIM}(main branch)${NC}\n"
+    printf "${DIM}────────────────────────────────────────────${NC}\n"
 }
 
-ok() {
-    printf "\r\033[K  ${GREEN}✓${NC} %b\n" "$1"
+step() {
+    printf "\n${BLUE}${BOLD}▶ %s${NC}\n" "$1"
 }
 
 info() {
     printf "  ${DIM}%b${NC}\n" "$1"
 }
 
+ok() {
+    printf "\r\033[K  ${GREEN}✓${NC} %b\n" "$1"
+}
+
+warn() {
+    printf "\r\033[K  ${YELLOW}⚠${NC} %b\n" "$1"
+}
+
 fail() {
     printf "\r\033[K  ${RED}✗${NC} %b\n" "$1"
 }
 
-spin() {
+spinner() {
+    local message="$1"
     while true; do
         for frame in "${SPINNER_FRAMES[@]}"; do
-            printf "\r\033[K  ${YELLOW}%s${NC} %b" "$frame" "$1"
+            printf "\r\033[K  ${YELLOW}%s${NC} %s" "$frame" "$message"
             sleep 0.1
         done
     done
 }
 
-start_spin() {
-    spin "$1" &
+start_spinner() {
+    stop_spinner
+    spinner "$1" &
     SPIN_PID=$!
 }
 
-stop_spin() {
-    if [ -n "$SPIN_PID" ]; then
-        kill "$SPIN_PID" 2>/dev/null
-        wait "$SPIN_PID" 2>/dev/null
+stop_spinner() {
+    if [[ -n "$SPIN_PID" ]]; then
+        kill "$SPIN_PID" >/dev/null 2>&1 || true
+        wait "$SPIN_PID" >/dev/null 2>&1 || true
         SPIN_PID=""
+        printf "\r\033[K"
     fi
 }
 
-wait_for_log() {
+die() {
+    local message="$1"
+    INSTALL_FAILED=1
+    stop_spinner
+    fail "$message"
+    exit 1
+}
+
+run() {
+    local description="$1"
+    shift
+    start_spinner "$description"
+    if "$@" >>"$LOG_FILE" 2>&1; then
+        stop_spinner
+        ok "$description"
+    else
+        stop_spinner
+        fail "$description"
+        tail -n 20 "$LOG_FILE" | sed 's/^/    /'
+        die "Command failed: $*"
+    fi
+}
+
+wait_for_log_pattern() {
     local pattern="$1"
-    local timeout="${2:-30}"
-    local msg="$3"
-
-    [ -n "$msg" ] && start_spin "$msg"
-
+    local file="$2"
+    local timeout="$3"
+    local message="$4"
     local elapsed=0
-    while [ $elapsed -lt "$timeout" ]; do
-        if grep -q "$pattern" "$LOG" 2>/dev/null; then
-            stop_spin
+
+    start_spinner "$message"
+    while (( elapsed < timeout )); do
+        if [[ -f "$file" ]] && grep -q "$pattern" "$file" 2>/dev/null; then
+            stop_spinner
             return 0
         fi
         sleep 1
         elapsed=$((elapsed + 1))
     done
-
-    stop_spin
+    stop_spinner
     return 1
 }
 
-die() {
-    stop_spin
-    fail "$1"
-    exit 1
+ensure_macos() {
+    [[ "$(uname)" == "Darwin" ]] || die "This installer only works on macOS."
+    local major
+    major="$(sw_vers -productVersion | cut -d. -f1)"
+    (( major >= 13 )) || die "macOS 13 Ventura or later is required."
 }
 
-# ── Parse arguments ──────────────────────────────────────────────────
-VERSION=""
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --version|-v)
-            VERSION="$2"
-            shift 2
-            ;;
-        *)
-            printf "Usage: install.sh [--version <version>]\n"
-            exit 1
-            ;;
-    esac
-done
-
-# ── Header ────────────────────────────────────────────────────────────
-printf "\n"
-printf "  ${BOLD}open-wispr${NC} ${DIM}— local voice dictation for macOS${NC}\n"
-printf "  ${DIM}────────────────────────────────────────────${NC}\n"
-
-# ── Prerequisites ────────────────────────────────────────────────────
-step "Checking prerequisites"
-
-if [[ "$(uname -m)" != "arm64" ]]; then
-    fail "Apple Silicon (M1 or later) is required."
-    die "open-wispr uses Metal GPU acceleration which is not available on Intel Macs."
-fi
-ok "Apple Silicon"
-
-if ! command -v brew &>/dev/null; then
-    fail "Homebrew is not installed."
-    printf "\n"
-    info "Install it by running:"
-    printf "\n"
-    printf "  ${BOLD}/bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"${NC}\n"
-    printf "\n"
-    die "Then re-run this script."
-fi
-ok "Homebrew"
-
-# ── Step 1: Clean up ─────────────────────────────────────────────────
-if brew list open-wispr &>/dev/null || [ -d ~/Applications/OpenWispr.app ]; then
-    step "Removing previous installation"
-    start_spin "Cleaning up..."
-
-    brew services stop open-wispr </dev/null >/dev/null 2>&1 || true
-    brew uninstall --force open-wispr </dev/null >/dev/null 2>&1 || true
-    brew untap human37/open-wispr </dev/null >/dev/null 2>&1 || true
-    tccutil reset Accessibility com.human37.open-wispr </dev/null >/dev/null 2>&1 || true
-    tccutil reset Microphone com.human37.open-wispr </dev/null >/dev/null 2>&1 || true
-    rm -rf ~/Applications/OpenWispr.app
-
-    stop_spin
-    ok "Clean"
-fi
-
-# ── Step 2: Install ──────────────────────────────────────────────────
-step "Installing"
-
-start_spin "Tapping human37/open-wispr..."
-TAP_OUT=$(brew tap human37/open-wispr --force </dev/null 2>&1) || {
-    stop_spin
-    fail "Failed to tap human37/open-wispr"
-    info "$TAP_OUT"
-    die "Make sure git is installed."
+find_brew() {
+    if command -v brew >/dev/null 2>&1; then
+        command -v brew
+        return 0
+    fi
+    for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+        [[ -x "$candidate" ]] && { printf '%s\n' "$candidate"; return 0; }
+    done
+    return 1
 }
-stop_spin
-ok "Tapped ${DIM}human37/open-wispr${NC}"
 
-TAP_DIR="$(brew --repository human37/open-wispr 2>/dev/null)"
-if [ -n "$VERSION" ]; then
-    FORMULA_COMMIT=$(git -C "$TAP_DIR" log --all --grep="v${VERSION}" --format=%H -1)
-    if [ -z "$FORMULA_COMMIT" ]; then
-        die "Version ${VERSION} not found in tap history"
+ensure_homebrew() {
+    if BREW_BIN="$(find_brew)"; then
+        ok "Homebrew already installed"
+        return 0
     fi
-    git -C "$TAP_DIR" checkout "$FORMULA_COMMIT" -- open-wispr.rb 2>/dev/null
-fi
 
-start_spin "Installing open-wispr${VERSION:+ v$VERSION}..."
-brew install open-wispr </dev/null >/dev/null 2>&1 || true
-brew reinstall open-wispr </dev/null >/dev/null 2>&1 || true
-if [ -n "$VERSION" ]; then
-    git -C "$TAP_DIR" checkout main -- open-wispr.rb 2>/dev/null || true
-fi
-stop_spin
+    step "Installing Homebrew"
+    run "Installing Homebrew" env NONINTERACTIVE=1 HOMEBREW_NO_ANALYTICS=1 /bin/bash -c "$(curl -fsSL "$BREW_INSTALL_URL")"
 
-BREW_PREFIX="$(brew --prefix open-wispr 2>/dev/null)"
-CELLAR_BIN="${BREW_PREFIX}/OpenWispr.app/Contents/MacOS/open-wispr"
+    BREW_BIN="$(find_brew)" || die "Homebrew installed but brew was not found in PATH."
+    eval "$($BREW_BIN shellenv)"
+    ok "Homebrew ready"
+}
 
-if [ ! -x "$CELLAR_BIN" ]; then
-    die "Installation failed — binary not found. Run 'brew install open-wispr' manually."
-fi
-ok "Installed"
-
-mkdir -p ~/Applications
-rm -rf ~/Applications/OpenWispr.app
-ln -sf "${BREW_PREFIX}/OpenWispr.app" ~/Applications/OpenWispr.app
-
-# ── Step 3: Permissions ──────────────────────────────────────────────
-step "Setting up permissions"
-info "Starting app to request permissions...\n"
-
-true > "$LOG" 2>/dev/null || true
-brew services start open-wispr </dev/null >/dev/null 2>&1 || true
-
-sleep 2
-if ! brew services list 2>/dev/null | grep -q "open-wispr.*started"; then
-    fail "Service failed to start"
-    die "Check: brew services start open-wispr"
-fi
-
-if ! wait_for_log "Microphone:" 30 "Requesting microphone access..."; then
-    fail "Timed out waiting for microphone prompt"
-    die "Logs: tail -f $LOG"
-fi
-
-if grep -q "Microphone: granted" "$LOG" 2>/dev/null; then
-    ok "Microphone"
-elif grep -q "Microphone: denied" "$LOG" 2>/dev/null; then
-    fail "Microphone denied"
-    info "Grant in ${BOLD}System Settings → Privacy & Security → Microphone${NC}"
-    die "Then re-run this script."
-else
-    ok "Microphone"
-fi
-
-if wait_for_log "Accessibility: granted" 5; then
-    ok "Accessibility"
-else
-    printf "\r\033[K"
-    info "macOS needs Accessibility permission to detect your hotkey."
-    info "System Settings will open — find ${BOLD}OpenWispr${NC} and toggle it ${BOLD}ON${NC}.\n"
-
-    if ! wait_for_log "Accessibility: granted" 300 "Waiting for you to grant Accessibility permission..."; then
-        die "Timed out waiting for Accessibility permission."
+ensure_swift_toolchain() {
+    step "Checking developer tools"
+    if ! xcode-select -p >/dev/null 2>&1; then
+        die "Xcode Command Line Tools are required. Run 'xcode-select --install', finish the installation, then re-run this script."
     fi
-    ok "Accessibility"
-fi
+    run "Checking Swift toolchain" swift --version
+}
 
-# ── Step 4: Model download ───────────────────────────────────────────
-if grep -q "Downloading" "$LOG" 2>/dev/null; then
-    step "Downloading Whisper model"
-
-    if ! wait_for_log "Ready\." 300 "Downloading model (~142 MB, one-time)..."; then
-        die "Download timed out. Check: tail -f $LOG"
+ensure_brew_package() {
+    local formula="$1"
+    local label="${2:-$1}"
+    if "$BREW_BIN" list "$formula" >/dev/null 2>&1; then
+        ok "${label} already installed"
+    else
+        run "Installing ${label}" "$BREW_BIN" install "$formula"
     fi
-    ok "Model ready"
-fi
+}
 
-# ── Step 5: Wait for ready ───────────────────────────────────────────
-if ! grep -q "Ready\." "$LOG" 2>/dev/null; then
-    if ! wait_for_log "Ready\." 30 "Finishing setup..."; then
-        die "Timed out. Check: tail -f $LOG"
+ensure_dev_tools() {
+    step "Installing required tools"
+    run "Updating Homebrew metadata" "$BREW_BIN" update
+    ensure_brew_package whisper-cpp whisper-cpp
+    if command -v git >/dev/null 2>&1; then
+        ok "git already available"
+    else
+        ensure_brew_package git git
     fi
-fi
+}
 
-# ── Step 6: Verify service ───────────────────────────────────────────
-if brew services list 2>/dev/null | grep -q "open-wispr.*started"; then
-    ok "Running as background service"
-else
-    start_spin "Restarting service..."
-    brew services restart open-wispr </dev/null >/dev/null 2>&1 || true
-    stop_spin
-    ok "Service restarted"
-fi
+clone_repo() {
+    step "Fetching open-wispr source"
+    run "Cloning repository" git clone --depth 1 --branch main "$REPO_URL" "$REPO_DIR"
+}
 
-# ── Done ──────────────────────────────────────────────────────────────
-hotkey=$(grep "^Hotkey:" "$LOG" 2>/dev/null | tail -1 | sed 's/^Hotkey: //')
-model=$(grep "^Model:" "$LOG" 2>/dev/null | tail -1 | sed 's/^Model: //')
-version=$(grep "^open-wispr v" "$LOG" 2>/dev/null | tail -1)
+build_app() {
+    step "Building app"
+    cd "$REPO_DIR"
+    run "Building Swift release binary" swift build -c release
+    run "Bundling app" bash scripts/bundle-app.sh .build/release/open-wispr "$APP_NAME" main
+}
 
-printf "\n"
-printf "  ${DIM}────────────────────────────────────────────${NC}\n"
-printf "  ${GREEN}${BOLD}Ready!${NC}\n"
-printf "\n"
-[ -n "$version" ] && printf "  ${DIM}%s${NC}\n" "$version"
-[ -n "$hotkey" ]  && printf "  Hotkey  ${BOLD}%s${NC}\n" "$hotkey"
-[ -n "$model" ]   && printf "  Model   ${BOLD}%s${NC}\n" "$model"
-printf "\n"
-printf "  Hold your hotkey, speak, release -- text appears at cursor.\n"
-printf "\n"
-printf "  ${DIM}If you want to support development: ${BLUE}https://buy.stripe.com/4gM5kC2AU0Ssd4l6Hqd7q00${NC}\n"
-printf "\n"
+stop_running_processes() {
+    local pids=""
+    pids="$(pgrep -f "${APP_BINARY} start" 2>/dev/null || true)"
+    if [[ -z "$pids" ]]; then
+        ok "No running open-wispr process to stop"
+        return 0
+    fi
+
+    info "Stopping running open-wispr process(es): $(echo "$pids" | tr '\n' ' ')"
+    run "Stopping existing open-wispr process" pkill -f "${APP_BINARY} start"
+    sleep 1
+    if pgrep -f "${APP_BINARY} start" >/dev/null 2>&1; then
+        run "Force stopping lingering open-wispr process" pkill -9 -f "${APP_BINARY} start"
+    fi
+}
+
+unload_launch_agent() {
+    local domain="gui/$(id -u)"
+    launchctl bootout "$domain/$LAUNCH_AGENT_LABEL" >/dev/null 2>&1 || true
+    launchctl disable "$domain/$LAUNCH_AGENT_LABEL" >/dev/null 2>&1 || true
+    launchctl remove "$LAUNCH_AGENT_LABEL" >/dev/null 2>&1 || true
+}
+
+install_app() {
+    step "Installing app"
+    [[ -d "$REPO_DIR/$APP_NAME" ]] || die "Bundled app not found at $REPO_DIR/$APP_NAME"
+
+    mkdir -p "$HOME/Applications"
+    unload_launch_agent
+    stop_running_processes
+
+    if [[ -d "$APP_DEST" ]]; then
+        run "Removing previous app" rm -rf "$APP_DEST"
+    else
+        ok "No existing app to remove"
+    fi
+    run "Copying app to ~/Applications" cp -R "$REPO_DIR/$APP_NAME" "$APP_DEST"
+    [[ -x "$APP_BINARY" ]] || die "Installed app binary not found at $APP_BINARY"
+}
+
+valid_model_file() {
+    [[ -f "$MODEL_FILE" && -s "$MODEL_FILE" ]]
+}
+
+download_model() {
+    step "Downloading small multilingual model"
+    mkdir -p "$MODEL_DIR"
+    if valid_model_file; then
+        ok "Model already exists"
+        return 0
+    fi
+
+    if [[ -f "$MODEL_FILE" && ! -s "$MODEL_FILE" ]]; then
+        warn "Removing empty model file from previous attempt"
+        rm -f "$MODEL_FILE"
+    fi
+
+    local tmp_file
+    tmp_file="$(mktemp "$MODEL_DIR/ggml-small.bin.tmp.XXXXXX")"
+    if run "Downloading ggml-small.bin (~466 MB)" curl --fail --location --progress-bar --output "$tmp_file" "$MODEL_URL"; then
+        if [[ ! -s "$tmp_file" ]]; then
+            rm -f "$tmp_file"
+            die "Model download completed but produced an empty file."
+        fi
+        mv "$tmp_file" "$MODEL_FILE"
+        ok "Model saved to ${MODEL_FILE}"
+    else
+        rm -f "$tmp_file"
+        die "Failed to download model"
+    fi
+}
+
+write_config() {
+    step "Writing config"
+    mkdir -p "$CONFIG_DIR"
+    if [[ -f "$CONFIG_FILE" ]]; then
+        ok "Config already exists — leaving ${CONFIG_FILE} unchanged"
+        return 0
+    fi
+
+    cat > "$CONFIG_FILE" <<'EOF'
+{
+  "hotkey": { "keyCode": 63, "modifiers": [] },
+  "modelSize": "small",
+  "language": "en",
+  "proofreadingMode": "standard",
+  "maxRecordings": 0,
+  "toggleMode": false
+}
+EOF
+    ok "Config written to ${CONFIG_FILE}"
+}
+
+install_launch_agent() {
+    step "Configuring auto-start"
+    mkdir -p "$HOME/Library/LaunchAgents"
+    mkdir -p "$HOME/Library/Logs"
+    [[ -x "$APP_BINARY" ]] || die "Cannot create launch agent because app binary was not found at $APP_BINARY"
+
+    cat > "$LAUNCH_AGENT" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>${LAUNCH_AGENT_LABEL}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>${APP_BINARY}</string>
+        <string>start</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>ProcessType</key>
+    <string>Interactive</string>
+    <key>StandardOutPath</key>
+    <string>${HOME}/Library/Logs/open-wispr.log</string>
+    <key>StandardErrorPath</key>
+    <string>${HOME}/Library/Logs/open-wispr.log</string>
+</dict>
+</plist>
+EOF
+
+    unload_launch_agent
+    run "Loading launch agent" launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT"
+    run "Enabling launch agent" launchctl enable "gui/$(id -u)/${LAUNCH_AGENT_LABEL}"
+    run "Starting launch agent" launchctl kickstart -k "gui/$(id -u)/${LAUNCH_AGENT_LABEL}"
+}
+
+start_app_and_prompt_permissions() {
+    step "Checking permissions"
+    : > "$APP_LOG"
+    info "OpenWispr is launched via the login agent; no duplicate direct start is performed."
+    info "Permission checks are best-effort. If access is already granted, you may not see new prompts."
+
+    if wait_for_log_pattern "Microphone:" "$APP_LOG" 45 "Watching for microphone status..."; then
+        if grep -q "Microphone: denied" "$APP_LOG"; then
+            warn "Microphone permission was denied"
+            info "Grant it in ${BOLD}System Settings → Privacy & Security → Microphone${NC}"
+        elif grep -q "Microphone: granted" "$APP_LOG"; then
+            ok "Microphone access already granted or confirmed"
+        elif grep -q "Microphone: requesting" "$APP_LOG"; then
+            ok "Microphone permission request was triggered"
+        else
+            warn "Observed microphone log output, but could not determine the final state automatically"
+        fi
+    else
+        warn "Did not observe microphone status automatically — this can be normal if permission was already settled or logs were unchanged"
+    fi
+
+    open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" >>"$LOG_FILE" 2>&1 || true
+    info "System Settings was opened for ${BOLD}Accessibility${NC}. Enable ${BOLD}OpenWispr${NC} if it is not already allowed."
+    if wait_for_log_pattern "Accessibility: granted" "$APP_LOG" 300 "Watching for Accessibility status..."; then
+        ok "Accessibility access already granted or confirmed"
+    else
+        warn "Accessibility was not confirmed automatically — if OpenWispr is already enabled, you can ignore this message"
+        info "You can manage it in ${BOLD}System Settings → Privacy & Security → Accessibility${NC}"
+    fi
+
+    run "Opening installed app bundle" open "$APP_DEST"
+}
+
+print_success() {
+    printf "\n${DIM}────────────────────────────────────────────${NC}\n"
+    printf "${GREEN}${BOLD}OpenWispr is installed.${NC}\n\n"
+    printf "  App:        ${BOLD}%s${NC}\n" "$APP_DEST"
+    printf "  Config:     ${BOLD}%s${NC}\n" "$CONFIG_FILE"
+    printf "  Model:      ${BOLD}%s${NC}\n" "$MODEL_FILE"
+    printf "  Auto-start: ${BOLD}%s${NC}\n\n" "$LAUNCH_AGENT"
+    printf "  Hotkey:     ${BOLD}Globe / fn${NC}\n"
+    printf "  Language:   ${BOLD}en${NC}\n"
+    printf "  Model size: ${BOLD}small${NC}\n"
+    printf "  Proofread:  ${BOLD}standard${NC}\n\n"
+    printf "  One-line install command for users:\n"
+    printf "  ${BOLD}curl -fsSL %s/scripts/install.sh | bash${NC}\n\n" "$RAW_BASE"
+}
+
+main() {
+    : > "$LOG_FILE"
+    print_header
+    ensure_macos
+    step "Checking system"
+    ok "macOS supported"
+    ensure_homebrew
+    eval "$($BREW_BIN shellenv)"
+    export PATH="$(dirname "$BREW_BIN"):/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+    ensure_swift_toolchain
+    ensure_dev_tools
+    clone_repo
+    build_app
+    install_app
+    download_model
+    write_config
+    install_launch_agent
+    start_app_and_prompt_permissions
+    print_success
+}
+
+main "$@"

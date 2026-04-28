@@ -17,26 +17,24 @@
 
 ## Install
 
-### Option A: One-liner (recommended)
-
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/totnormal/open-wispr/feat/proofreading-pipeline/scripts/remote-install.sh)"
+curl -fsSL https://raw.githubusercontent.com/totnormal/open-wispr/main/scripts/install.sh | bash
 ```
 
-Clones the repo, installs whisper-cpp via Homebrew, builds from source, downloads `base.en` (or your chosen model), sets up auto-start on login, and starts dictating. Everything is automatic.
+This is the only supported install method.
 
-### Option B: Portable DMG (for sharing)
+It handles the full guided setup flow on macOS:
+- installs Homebrew if needed
+- installs `whisper-cpp`
+- clones and builds `open-wispr` from the `main` branch
+- bundles and installs `~/Applications/OpenWispr.app`
+- downloads the multilingual `small` model (`ggml-small.bin`)
+- creates `~/.config/open-wispr/config.json` if it does not already exist
+- installs auto-start via `~/Library/LaunchAgents/com.openwispr.dictation.plist`
+- reloads the launch agent cleanly on re-install
+- guides you through Microphone and Accessibility permissions (best-effort if already granted)
 
-```bash
-git clone https://github.com/totnormal/open-wispr.git
-cd open-wispr
-git checkout feat/proofreading-pipeline
-bash scripts/build-dmg.sh
-```
-
-Produces `open-wispr-v0.37.0.dmg` — drag OpenWispr.app to /Applications like any Mac app. Then `brew install whisper-cpp` and download a model.
-
-After any install: a waveform icon appears in your menu bar. The default hotkey is the **Globe key** (🌐). Hold it, speak, release.
+After install: a waveform icon appears in your menu bar. The default hotkey is the **Globe key** (🌐 / fn). Hold it, speak, release.
 
 > **[Full installation guide](docs/install-guide.md)** — permissions walkthrough with screenshots, non-English macOS instructions, and troubleshooting.
 
@@ -47,9 +45,8 @@ Edit `~/.config/open-wispr/config.json`:
 ```json
 {
   "hotkey": { "keyCode": 63, "modifiers": [] },
-  "modelSize": "base.en",
+  "modelSize": "small",
   "language": "en",
-  "spokenPunctuation": false,
   "proofreadingMode": "standard",
   "maxRecordings": 0,
   "toggleMode": false
@@ -60,22 +57,22 @@ Edit `~/.config/open-wispr/config.json`:
 |---|---|---|
 | **hotkey** | `63` | Globe (`63`), Right Option (`61`), F5 (`96`), or any key code |
 | **modifiers** | `[]` | `"cmd"`, `"ctrl"`, `"shift"`, `"opt"` — combine for chords |
-| **modelSize** | `"base.en"` | See model table below |
+| **modelSize** | `"small"` | See model table below |
 | **language** | `"en"` | `"auto"` for auto-detect, or any [ISO 639-1 code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) — e.g. `it`, `fr`, `de`, `es` |
-| **spokenPunctuation** | `false` | Say "comma", "period", etc. to insert punctuation instead of auto-punctuation. Note: when `proofreadingMode` is `standard`, spoken punctuation works as a fallback — punctuation marks are only inserted when whisper didn't produce one. |
 | **proofreadingMode** | `"standard"` | `"standard"` — always post-process output (filler removal, contraction repair, sentence capitalization, spoken-punctuation fallback). `"minimal"` — raw whisper output with only noise markers stripped. |
 | **maxRecordings** | `0` | Optionally store past recordings locally as `.wav` files for re-transcribing from the tray menu. `0` = nothing stored (default). Set 1-100 to keep that many recent recordings. |
 | **toggleMode** | `false` | Press hotkey once to start recording, press again to stop. Default is hold-to-talk. |
 
 ### Models
 
-Larger models are more accurate but slower and use more memory. The default `base.en` is a good balance for most users.
+Larger models are more accurate but slower and use more memory. The installer defaults to multilingual `small` so any user can start immediately.
 
 | Model | Size | Speed | Accuracy | Best for |
 |---|---|---|---|---|
 | `tiny.en` | 75 MB | Fastest | Lower | Quick notes, short phrases |
-| **`base.en`** | 142 MB | **Fast** | **Good** | **Most users (default)** |
+| `base.en` | 142 MB | Fast | Good | Lightweight English-only default alternative |
 | `small.en` | 466 MB | Moderate | Better | Longer dictation, technical terms |
+| **`small`** | **466 MB** | **Moderate** | **Better** | **Installer default, multilingual** |
 | `medium.en` | 1.5 GB | Slower | Great | Maximum accuracy, complex speech |
 | `large-v3-turbo` | 1.6 GB | Moderate | Great | Fast multilingual, near-large accuracy |
 | `large-v3` | 3 GB | Slowest | Best | Multilingual, highest accuracy (M1 Pro+ recommended) |
@@ -130,7 +127,7 @@ Audio is recorded to a temp file, transcribed locally, and immediately deleted. 
 ## Build from source
 
 ```bash
-git clone -b feat/proofreading-pipeline https://github.com/totnormal/open-wispr.git
+git clone -b main https://github.com/totnormal/open-wispr.git
 cd open-wispr
 brew install whisper-cpp
 swift build -c release
