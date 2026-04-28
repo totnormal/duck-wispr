@@ -5,6 +5,7 @@
 <h1 align="center">open-wispr</h1>
 
 <p align="center">
+  <strong><a href="https://tarnovski.com">Made by TARNOVSKI</a></strong><br>
   Local, private voice dictation for macOS. Hold a key, speak, release — your words appear at the cursor.<br>
   Everything runs on-device. No audio or text ever leaves your machine.
 </p>
