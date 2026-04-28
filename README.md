@@ -26,7 +26,7 @@ It handles the full guided setup flow on macOS:
 - installs Homebrew if needed
 - installs `whisper-cpp`
 - clones and builds `open-wispr` from the `main` branch
-- bundles and installs `~/Applications/OpenWispr.app`
+- bundles and installs `/Applications/OpenWispr.app`
 - downloads the multilingual `small` model (`ggml-small.bin`)
 - creates `~/.config/open-wispr/config.json` if it does not already exist
 - installs auto-start via `~/Library/LaunchAgents/com.openwispr.dictation.plist`

@@ -15,7 +15,7 @@ RAW_BASE="https://raw.githubusercontent.com/totnormal/open-wispr/main"
 BREW_INSTALL_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 MODEL_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
 APP_NAME="OpenWispr.app"
-APP_DEST="$HOME/Applications/${APP_NAME}"
+APP_DEST="/Applications/${APP_NAME}"
 APP_BINARY="$APP_DEST/Contents/MacOS/open-wispr"
 LAUNCH_AGENT_LABEL="com.openwispr.dictation"
 LAUNCH_AGENT="$HOME/Library/LaunchAgents/${LAUNCH_AGENT_LABEL}.plist"
@@ -233,16 +233,15 @@ install_app() {
     step "Installing app"
     [[ -d "$REPO_DIR/$APP_NAME" ]] || die "Bundled app not found at $REPO_DIR/$APP_NAME"
 
-    mkdir -p "$HOME/Applications"
     unload_launch_agent
     stop_running_processes
 
     if [[ -d "$APP_DEST" ]]; then
-        run "Removing previous app" rm -rf "$APP_DEST"
+        run "Removing previous app" sudo rm -rf "$APP_DEST"
     else
         ok "No existing app to remove"
     fi
-    run "Copying app to ~/Applications" cp -R "$REPO_DIR/$APP_NAME" "$APP_DEST"
+    run "Copying app to /Applications" sudo cp -R "$REPO_DIR/$APP_NAME" "$APP_DEST"
     [[ -x "$APP_BINARY" ]] || die "Installed app binary not found at $APP_BINARY"
 }
 
