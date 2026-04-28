@@ -1,15 +1,17 @@
 # open-wispr
 
-> Free, open-source voice dictation for macOS. Powered by Whisper AI, runs 100% on-device.
+> Free, open-source voice dictation for macOS. Powered by Whisper AI, runs 100% on-device with a proofreading pipeline for automatic punctuation, filler removal, and sentence capitalization.
 
 open-wispr is a lightweight macOS app that provides push-to-talk voice dictation. Hold a hotkey, speak, release — transcribed text appears at your cursor in any app. It uses OpenAI's Whisper model running locally via whisper.cpp, so no audio or text ever leaves the machine.
+
+This fork adds a **proofreading pipeline** — post-ASR correction that runs fully on-device at zero added latency: filler word removal, contraction repair, spoken-punctuation fallback, sentence capitalization, and prompt priming for continuity. Also features auto model cleanup: old models are deleted when you switch to a new one.
 
 ## Key Facts
 
 - **Price**: Free and open source (MIT license)
 - **Platform**: macOS (Apple Silicon and Intel)
 - **Privacy**: 100% on-device. Zero network requests. Default maxRecordings=0: temp file + immediate delete, and startup clears any older retained recordings. Set maxRecordings 1–100 to enable Recent Recordings.
-- **Install**: `brew install human37/open-wispr/open-wispr` or guided installer via `curl -fsSL https://open-wispr.com/install.sh | bash`
+- **Install**: One-liner: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/totnormal/open-wispr/feat/proofreading-pipeline/scripts/remote-install.sh)"` — or clone and build from source
 - **Source**: https://github.com/human37/open-wispr
 - **Website**: https://open-wispr.com/
 

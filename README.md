@@ -10,19 +10,41 @@
   Everything runs on-device. No audio or text ever leaves your machine.
 </p>
 
-<p align="center">Powered by <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a> with Metal acceleration on Apple Silicon.</p>
+<p align="center">
+  Powered by <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a> with Metal acceleration on Apple Silicon.<br>
+  <strong>Proofreading pipeline</strong> — automatic punctuation, sentence capitalization, filler removal, and contraction repair, all on-device.
+</p>
 
 ## Install
+
+### Option A: One-liner (recommended)
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/totnormal/open-wispr/feat/proofreading-pipeline/scripts/remote-install.sh)"
+```
+
+Clones the repo, installs whisper-cpp via Homebrew, builds from source, downloads `base.en` (or your chosen model), sets up auto-start on login, and starts dictating. Everything is automatic.
+
+### Option B: Homebrew (original upstream)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/human37/open-wispr/main/scripts/install.sh | bash
 ```
 
-The script handles everything: installs via Homebrew, walks you through granting permissions, downloads the Whisper model, and starts the service. You'll see live feedback as each step completes.
+> Note: The upstream Homebrew formula does not include the proofreading pipeline. Use Option A for filler removal, automatic punctuation, sentence capitalization, and model auto-cleanup.
 
-A waveform icon appears in your menu bar when it's running.
+### Option C: Portable DMG
 
-The default hotkey is the **Globe key** (🌐, bottom-left). Hold it, speak, release.
+```bash
+git clone https://github.com/totnormal/open-wispr.git
+cd open-wispr
+git checkout feat/proofreading-pipeline
+bash scripts/build-dmg.sh
+```
+
+Produces `open-wispr-v0.37.0.dmg` — drag OpenWispr.app to /Applications like any Mac app. Then `brew install whisper-cpp` and download a model.
+
+After any install: a waveform icon appears in your menu bar. The default hotkey is the **Globe key** (🌐). Hold it, speak, release.
 
 > **[Full installation guide](docs/install-guide.md)** — permissions walkthrough with screenshots, non-English macOS instructions, and troubleshooting.
 
@@ -115,14 +137,38 @@ open-wispr is completely local. Audio is recorded to a temp file, transcribed by
 
 See what's planned and in progress on the [public roadmap](https://github.com/users/human37/projects/2). Feature requests and ideas are welcome as [issues](https://github.com/human37/open-wispr/issues).
 
+## Features
+
+### Proofreading pipeline (post-ASR correction)
+
+After whisper transcribes your speech, the proofreading pipeline cleans up the output — fully on-device, at zero added latency:
+
+- **Filler word removal** — strips "um", "uh", "you know", etc.
+- **Repeated word fix** — merges stutters ("I I I think" → "I think")
+- **Broken contraction repair** — fixes "do not" → "don't", "I am" → "I'm"
+- **Spoken-punctuation fallback** — when whisper misses a comma or period, spoken "comma"/"period" still inserts it
+- **Auto-capitalization** — sentences always start with capital letters
+- **Prompt priming** — whisper sees your last transcription as context, improving continuity
+
+Toggle between **Standard** (full pipeline) and **Minimal** (raw whisper) in the menu bar.
+
+### Auto model cleanup
+
+When you switch models, old ones are automatically deleted — no wasted disk space. Only your current model stays.
+
+### On-device only
+
+Audio is recorded to a temp file, transcribed locally, and immediately deleted. No network calls except the one-time model download from HuggingFace.
+
 ## Build from source
 
 ```bash
-git clone https://github.com/human37/open-wispr.git
+git clone -b feat/proofreading-pipeline https://github.com/totnormal/open-wispr.git
 cd open-wispr
 brew install whisper-cpp
 swift build -c release
-.build/release/open-wispr start
+bash scripts/bundle-app.sh .build/release/open-wispr OpenWispr.app dev
+open OpenWispr.app
 ```
 
 ## Support
