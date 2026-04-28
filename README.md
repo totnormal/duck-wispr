@@ -36,6 +36,20 @@ It handles the full guided setup flow on macOS:
 
 After install: a waveform icon appears in your menu bar. The default hotkey is the **Globe key** (🌐 / fn). Hold it, speak, release.
 
+### DMG (drag to /Applications)
+
+Build it yourself:
+
+```bash
+git clone https://github.com/totnormal/open-wispr.git
+cd open-wispr
+bash scripts/build-dmg.sh
+```
+
+Open the DMG, drag OpenWispr to /Applications, and launch it. The app handles model download, config, and auto-start on first launch. Just grant Microphone and Accessibility when prompted.
+
+**Prerequisite:** `brew install whisper-cpp`
+
 > **[Full installation guide](docs/install-guide.md)** — permissions walkthrough with screenshots, non-English macOS instructions, and troubleshooting.
 
 ## Configuration

@@ -102,6 +102,8 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             Transcriber.deleteOtherModels(keeping: config.modelSize)
         }
 
+        installLaunchAgentIfNeeded()
+
         if let modelPath = Transcriber.findModel(modelSize: config.modelSize) {
             let modelURL = URL(fileURLWithPath: modelPath)
             if !ModelDownloader.isValidGGMLFile(at: modelURL) {
@@ -355,5 +357,37 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+    }
+
+    // ── Launch agent (auto-start on login) ───────────────────────────
+
+    private func installLaunchAgentIfNeeded() {
+        let label = "com.openwispr.dictation"
+        let plistPath = NSHomeDirectory() + "/Library/LaunchAgents/\(label).plist"
+
+        guard !FileManager.default.fileExists(atPath: plistPath) else { return }
+
+        let plist: [String: Any] = [
+            "Label": label,
+            "ProgramArguments": [Bundle.main.executablePath ?? "/Applications/OpenWispr.app/Contents/MacOS/open-wispr", "start"],
+            "RunAtLoad": true,
+            "KeepAlive": false,
+            "ProcessType": "Interactive",
+            "StandardOutPath": NSHomeDirectory() + "/Library/Logs/open-wispr.log",
+            "StandardErrorPath": NSHomeDirectory() + "/Library/Logs/open-wispr.log",
+        ]
+
+        guard let dir = (plistPath as NSString).deletingLastPathComponent as String?,
+              FileManager.default.fileExists(atPath: dir) || ((try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)) != nil)
+        else { return }
+
+        guard let data = try? PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0) else { return }
+        try? data.write(to: URL(fileURLWithPath: plistPath))
+
+        let task = Process()
+        task.launchPath = "/bin/launchctl"
+        task.arguments = ["load", "-w", plistPath]
+        try? task.run()
+        task.waitUntilExit()
     }
 }

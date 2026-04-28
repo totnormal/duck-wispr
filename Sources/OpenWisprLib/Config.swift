@@ -169,7 +169,7 @@ public struct Config: Codable {
     public static let defaultConfig = Config(
         hotkey: HotkeyConfig(keyCode: 63, modifiers: []),
         modelPath: nil,
-        modelSize: "base.en",
+        modelSize: "small",
         language: "en",
         spokenPunctuation: FlexBool(false),
         proofreadingMode: .standard,
