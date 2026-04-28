@@ -116,6 +116,7 @@ echo "────────────────────"
 cur_model=$(read_config modelSize base.en)
 cur_lang=$(read_config language en)
 cur_punct=$(read_config spokenPunctuation false)
+cur_proofreading=$(read_config proofreadingMode standard)
 cur_max_recordings=$(read_config maxRecordings 0)
 cur_toggle=$(read_config toggleMode false)
 
@@ -151,7 +152,7 @@ printf "  Language [%s]: " "$cur_lang"
 read -r lang
 lang="${lang:-$cur_lang}"
 
-# Spoken punctuation
+# Spoken punctuation (legacy — mapped to proofreading mode)
 printf "  Spoken punctuation (y/n) [%s]: " "$([ "$cur_punct" = "true" ] && echo "y" || echo "n")"
 read -r punct_choice
 case "$punct_choice" in
@@ -159,6 +160,16 @@ case "$punct_choice" in
     n|N|no) punct="false" ;;
     "") punct="$cur_punct" ;;
     *) punct="$cur_punct" ;;
+esac
+
+# Proofreading mode
+printf "  Proofreading mode (s=standard, m=minimal) [%s]: " "$([ "$cur_proofreading" = "standard" ] && echo "s" || echo "m")"
+read -r proof_choice
+case "$proof_choice" in
+    s|S|standard) proofreading="standard" ;;
+    m|M|minimal) proofreading="minimal" ;;
+    "") proofreading="$cur_proofreading" ;;
+    *) proofreading="$cur_proofreading" ;;
 esac
 
 # Max recordings (0=privacy/temp+delete, 1-100=keep for reprocessing)
@@ -217,6 +228,7 @@ cat > "$CONFIG_FILE" << EOF
   "language": "$lang",
   "modelSize": "$model",
   "spokenPunctuation": $punct,
+  "proofreadingMode": "$proofreading",
   "maxRecordings": $max_recordings,
   "toggleMode": $toggle,
   "hotkey": { "keyCode": $hotkey_code, "modifiers": $hotkey_mods_json }
@@ -230,7 +242,7 @@ if [ "$hotkey_mods_json" != "[]" ]; then
 else
     hotkey_display="$hotkey_name"
 fi
-echo "  Config: model=$model  lang=$lang  punctuation=$punct  maxRecordings=$max_recordings  toggle=$toggle  hotkey=$hotkey_display"
+echo "  Config: model=$model  lang=$lang  punctuation=$punct  proofreading=$proofreading  maxRecordings=$max_recordings  toggle=$toggle  hotkey=$hotkey_display"
 echo "────────────────────"
 
 # Kill any running instances

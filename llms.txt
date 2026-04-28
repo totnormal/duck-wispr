@@ -41,14 +41,21 @@ open-wispr is a lightweight macOS app that provides push-to-talk voice dictation
 
 ```json
 {
-  "model": "base",
+  "hotkey": { "keyCode": 63, "modifiers": [] },
+  "modelSize": "base.en",
   "language": "en",
-  "hotkey": "globe",
-  "max_duration": 30
+  "spokenPunctuation": false,
+  "proofreadingMode": "standard",
+  "maxRecordings": 0,
+  "toggleMode": false
 }
 ```
 
 Config file location: `~/.config/open-wispr/config.json`
+
+### Proofreading modes
+- **`standard`** (default) — Full post-processing: filler word removal, contraction repair, sentence capitalization, and spoken-punctuation fallback
+- **`minimal`** — Raw whisper output with only noise markers stripped
 
 ## System Requirements
 

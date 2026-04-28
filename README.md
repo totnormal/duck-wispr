@@ -44,6 +44,7 @@ Edit `~/.config/open-wispr/config.json`:
   "modelSize": "base.en",
   "language": "en",
   "spokenPunctuation": false,
+  "proofreadingMode": "standard",
   "maxRecordings": 0,
   "toggleMode": false
 }
@@ -57,7 +58,8 @@ Then restart: `brew services restart open-wispr`
 | **modifiers** | `[]` | `"cmd"`, `"ctrl"`, `"shift"`, `"opt"` — combine for chords |
 | **modelSize** | `"base.en"` | See model table below |
 | **language** | `"en"` | `"auto"` for auto-detect, or any [ISO 639-1 code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) — e.g. `it`, `fr`, `de`, `es` |
-| **spokenPunctuation** | `false` | Say "comma", "period", etc. to insert punctuation instead of auto-punctuation |
+| **spokenPunctuation** | `false` | Say "comma", "period", etc. to insert punctuation instead of auto-punctuation. Note: when `proofreadingMode` is `standard`, spoken punctuation works as a fallback — punctuation marks are only inserted when whisper didn't produce one. |
+| **proofreadingMode** | `"standard"` | `"standard"` — always post-process output (filler removal, contraction repair, sentence capitalization, spoken-punctuation fallback). `"minimal"` — raw whisper output with only noise markers stripped. |
 | **maxRecordings** | `0` | Optionally store past recordings locally as `.wav` files for re-transcribing from the tray menu. `0` = nothing stored (default). Set 1-100 to keep that many recent recordings. |
 | **toggleMode** | `false` | Press hotkey once to start recording, press again to stop. Default is hold-to-talk. |
 
