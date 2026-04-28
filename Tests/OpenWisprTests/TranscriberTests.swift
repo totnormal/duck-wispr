@@ -61,4 +61,48 @@ final class TranscriberTests: XCTestCase {
     func testSanitizedPromptReturnsNilForMarkersOnly() {
         XCTAssertNil(Transcriber.sanitizedPrompt(" [BLANK_AUDIO] "))
     }
+
+    // MARK: - deleteOtherModels
+
+    func testDeleteOtherModelsKeepsOnlyTarget() {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("wispr-test-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        // Create three "models"
+        let files = ["ggml-base.en.bin", "ggml-base.bin", "ggml-small.bin"]
+        for f in files {
+            FileManager.default.createFile(atPath: tmp.appendingPathComponent(f).path, contents: Data(), attributes: nil)
+        }
+
+        Transcriber.deleteOtherModels(keeping: "small", in: tmp.path)
+
+        let remaining = (try? FileManager.default.contentsOfDirectory(atPath: tmp.path)) ?? []
+        XCTAssertEqual(remaining.sorted(), ["ggml-small.bin"])
+    }
+
+    func testDeleteOtherModelsIgnoresNonGGMLFiles() {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("wispr-test-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        FileManager.default.createFile(atPath: tmp.appendingPathComponent("config.json").path, contents: Data(), attributes: nil)
+        FileManager.default.createFile(atPath: tmp.appendingPathComponent("ggml-base.en.bin").path, contents: Data(), attributes: nil)
+
+        Transcriber.deleteOtherModels(keeping: "base.en", in: tmp.path)
+
+        let remaining = (try? FileManager.default.contentsOfDirectory(atPath: tmp.path)) ?? []
+        XCTAssertEqual(remaining.sorted(), ["config.json", "ggml-base.en.bin"])
+    }
+
+    func testDeleteOtherModelsEmptyDir() {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("wispr-test-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        Transcriber.deleteOtherModels(keeping: "tiny", in: tmp.path)
+
+        let remaining = (try? FileManager.default.contentsOfDirectory(atPath: tmp.path)) ?? []
+        XCTAssertEqual(remaining, [])
+    }
 }

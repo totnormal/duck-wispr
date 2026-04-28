@@ -167,6 +167,25 @@ public class Transcriber {
 
         return nil
     }
+
+    /// Deletes all downloaded models except the one being kept.
+    /// Only cleans the given directory (default: ~/.config/open-wispr/models/).
+    public static func deleteOtherModels(keeping modelSize: String, in directory: String? = nil) {
+        let dir = directory ?? "\(Config.configDir.path)/models"
+        guard let files = try? FileManager.default.contentsOfDirectory(atPath: dir) else { return }
+        let keepFile = "ggml-\(modelSize).bin"
+        for file in files {
+            guard file.hasPrefix("ggml-") && file.hasSuffix(".bin") else { continue }
+            if file == keepFile { continue }
+            let path = "\(dir)/\(file)"
+            do {
+                try FileManager.default.removeItem(atPath: path)
+                print("Removed old model: \(file)")
+            } catch {
+                print("Could not remove old model \(file): \(error.localizedDescription)")
+            }
+        }
+    }
 }
 
 enum TranscriberError: LocalizedError {

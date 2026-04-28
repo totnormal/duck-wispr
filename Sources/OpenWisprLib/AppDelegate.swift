@@ -99,6 +99,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 self.statusBar.updateDownloadProgress(nil)
             }
+            Transcriber.deleteOtherModels(keeping: config.modelSize)
         }
 
         if let modelPath = Transcriber.findModel(modelSize: config.modelSize) {
@@ -113,6 +114,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
         }
+        Transcriber.deleteOtherModels(keeping: config.modelSize)
 
         recorder.prewarm()
 
@@ -191,6 +193,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
                     DispatchQueue.main.async {
                         self?.statusBar.state = .idle
                         self?.statusBar.updateDownloadProgress(nil)
+                        Transcriber.deleteOtherModels(keeping: newConfig.modelSize)
                     }
                 } catch {
                     DispatchQueue.main.async {
@@ -206,6 +209,8 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
             }
+        } else if oldModelSize != config.modelSize {
+            Transcriber.deleteOtherModels(keeping: config.modelSize)
         }
 
         statusBar.buildMenu()
