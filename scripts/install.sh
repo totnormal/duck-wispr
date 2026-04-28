@@ -332,9 +332,7 @@ install_launch_agent() {
 EOF
 
     unload_launch_agent
-    run "Loading launch agent" launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT"
-    run "Enabling launch agent" launchctl enable "gui/$(id -u)/${LAUNCH_AGENT_LABEL}"
-    run "Starting launch agent" launchctl kickstart -k "gui/$(id -u)/${LAUNCH_AGENT_LABEL}"
+    run "Loading launch agent" launchctl load -w "$LAUNCH_AGENT"
 }
 
 start_app_and_prompt_permissions() {
