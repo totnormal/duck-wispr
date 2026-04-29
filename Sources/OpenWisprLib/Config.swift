@@ -170,7 +170,7 @@ public struct Config: Codable {
         hotkey: HotkeyConfig(keyCode: 63, modifiers: []),
         modelPath: nil,
         modelSize: "small",
-        language: "en",
+        language: "auto",
         spokenPunctuation: FlexBool(false),
         proofreadingMode: .standard,
         maxRecordings: nil,

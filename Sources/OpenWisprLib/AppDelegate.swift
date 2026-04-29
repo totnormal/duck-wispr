@@ -151,7 +151,10 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         }
         Transcriber.deleteOtherModels(keeping: config.modelSize)
 
-        recorder.prewarm()
+        // NOTE: recorder is NOT prewarmed here.
+        // The audio engine is started on first key press (about 600ms delay).
+        // This prevents the orange mic indicator from appearing at all times,
+        // which feels like the app is "spying" when it's just idle.
 
         DispatchQueue.main.async { [weak self] in
             self?.startListening()
@@ -389,20 +392,29 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
                     try? FileManager.default.removeItem(at: audioURL)
                 }
             }
+
+            // Debug: check audio file size
+            let fileSize = (try? FileManager.default.attributesOfItem(atPath: audioURL.path)[.size] as? Int64) ?? 0
+            print("audio file: \(audioURL.path) (\(fileSize) bytes)")
+
             do {
                 let raw = try self.transcriber.transcribe(audioURL: audioURL, prompt: Transcriber.sanitizedPrompt(self.lastTranscription))
+                print("whisper raw (\(raw.count) chars): '\(raw)'")
                 let mode = self.config.proofreadingMode ?? .standard
                 let text = mode == .standard
                     ? TextPostProcessor.process(raw, language: self.config.language)
                     : raw
+                print("post-processed (\(text.count) chars): '\(text)'")
                 if maxRecordings > 0 {
                     RecordingStore.prune(maxCount: maxRecordings)
                 }
                 DispatchQueue.main.async {
                     if !text.isEmpty {
+                        print("inserting text: '\(text)'")
                         self.inserter.insert(text: text)
                         self.lastTranscription = text
                     } else {
+                        print("text empty — nothing to insert")
                         self.lastTranscription = nil
                     }
                     self.statusBar.state = .idle

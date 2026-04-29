@@ -351,6 +351,20 @@ class StatusBarController: NSObject {
         menu.addItem(openItem)
 
         menu.addItem(NSMenuItem.separator())
+
+        let resetHotkeyTarget = MenuItemTarget { [weak self] in
+            var cfg = Config.load()
+            cfg.hotkey = HotkeyConfig(keyCode: 63, modifiers: []) // fn/globe key
+            try? cfg.save()
+            self?.onConfigChange?(cfg)
+            self?.buildMenu()
+        }
+        menuItemTargets.append(resetHotkeyTarget)
+        let resetHotkeyItem = NSMenuItem(title: "Reset Hotkey to Default (fn)", action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
+        resetHotkeyItem.target = resetHotkeyTarget
+        menu.addItem(resetHotkeyItem)
+
+        menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         statusItem.menu = menu
