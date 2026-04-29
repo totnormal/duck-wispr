@@ -21,6 +21,14 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setup() {
+        // Check first-run before setup so we can activate the Dock icon early
+        let firstRunFile = Config.configDir.appendingPathComponent(".first-run-done")
+        isFirstRun = !FileManager.default.fileExists(atPath: firstRunFile.path)
+
+        if isFirstRun {
+            NSApp.setActivationPolicy(.regular)
+        }
+
         do {
             try setupInner()
         } catch {
@@ -32,6 +40,8 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
+
+    private var isFirstRun = false
 
     private func setupInner() throws {
         config = Config.load()
@@ -176,7 +186,85 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         print("Hotkey: \(hotkeyDesc)")
         print("Model: \(config.modelSize)")
         print("Ready.")
+
+        if isFirstRun {
+            showOnboarding()
+        }
     }
+
+    private func showOnboarding() {
+        // Show Dock icon briefly so the user sees the app exists
+        NSApp.setActivationPolicy(.regular)
+
+        // Mark first run done so we don't onboard again
+        let firstRunFile = Config.configDir.appendingPathComponent(".first-run-done")
+        try? "done".write(to: firstRunFile, atomically: true, encoding: .utf8)
+
+        // Show a small floating window pointing to the menu bar
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 380, height: 160),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "OpenWispr"
+        window.center()
+        window.level = .floating
+
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 160))
+        view.wantsLayer = true
+        view.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+
+        let icon = NSImageView(frame: NSRect(x: 20, y: 80, width: 48, height: 48))
+        icon.image = NSImage(named: "AppIcon") ?? NSImage(named: NSImage.applicationIconName)
+        icon.imageScaling = .scaleProportionallyUpOrDown
+        view.addSubview(icon)
+
+        let title = NSTextField(frame: NSRect(x: 80, y: 110, width: 280, height: 24))
+        title.stringValue = "OpenWispr is ready!"
+        title.font = NSFont.boldSystemFont(ofSize: 16)
+        title.isBezeled = false
+        title.isEditable = false
+        title.drawsBackground = false
+        view.addSubview(title)
+
+        let desc = NSTextField(frame: NSRect(x: 80, y: 55, width: 280, height: 48))
+        let hotkeyDesc = KeyCodes.describe(keyCode: config.hotkey.keyCode, modifiers: config.hotkey.modifiers)
+        desc.stringValue = "Look for the 🌊 icon in your menu bar.\nHold \(hotkeyDesc), speak, release — dictation appears."
+        desc.font = NSFont.systemFont(ofSize: 12)
+        desc.isBezeled = false
+        desc.isEditable = false
+        desc.drawsBackground = false
+        desc.lineBreakMode = .byWordWrapping
+        view.addSubview(desc)
+
+        let btn = NSButton(frame: NSRect(x: 80, y: 15, width: 140, height: 28))
+        btn.title = "Got it"
+        btn.bezelStyle = .rounded
+        btn.keyEquivalent = "\r"
+        btn.target = self
+        btn.action = #selector(dismissOnboarding)
+        view.addSubview(btn)
+
+        window.contentView = view
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        // Auto-dismiss after 8 seconds
+        onboardingWindow = window
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
+            self?.dismissOnboarding()
+        }
+    }
+
+    @objc private func dismissOnboarding() {
+        onboardingWindow?.close()
+        onboardingWindow = nil
+        // Switch back to menu-bar-only mode
+        NSApp.setActivationPolicy(.accessory)
+    }
+
+    private var onboardingWindow: NSWindow?
 
     public func reloadConfig() {
         let newConfig = Config.load()
