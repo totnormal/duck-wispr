@@ -500,14 +500,8 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         guard let data = try? PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0) else { return }
         try? data.write(to: URL(fileURLWithPath: plistPath))
 
-        // Register with launchd for auto-start on next login.
-        // Use bootstrap (not load -w) to avoid restarting an already-running job.
-        let task = Process()
-        task.launchPath = "/bin/launchctl"
-        let uid = getuid()
-        task.arguments = ["bootstrap", "gui/\(uid)", plistPath]
-        // If bootstrap fails (e.g. already loaded), just keep the plist — it'll load on next login
-        try? task.run()
-        task.waitUntilExit()
+        // Just write the plist — do NOT call launchctl.
+        // The plist will be picked up automatically on next login.
+        // Calling launchctl here would start a duplicate instance (restart loop).
     }
 }

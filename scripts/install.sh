@@ -400,8 +400,6 @@ start_app_and_prompt_permissions() {
         warn "Accessibility was not confirmed automatically — if OpenWispr is already enabled, you can ignore this message"
         info "You can manage it in ${BOLD}System Settings → Privacy & Security → Accessibility${NC}"
     fi
-
-    run "Opening installed app bundle" open "$APP_DEST"
 }
 
 print_success() {
