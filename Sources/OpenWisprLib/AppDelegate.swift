@@ -21,13 +21,9 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setup() {
-        // Check first-run before setup so we can activate the Dock icon early
+        // Check first-run before setup
         let firstRunFile = Config.configDir.appendingPathComponent(".first-run-done")
         isFirstRun = !FileManager.default.fileExists(atPath: firstRunFile.path)
-
-        if isFirstRun {
-            NSApp.setActivationPolicy(.regular)
-        }
 
         do {
             try setupInner()
@@ -193,9 +189,6 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showOnboarding() {
-        // Show Dock icon briefly so the user sees the app exists
-        NSApp.setActivationPolicy(.regular)
-
         // Mark first run done so we don't onboard again
         let firstRunFile = Config.configDir.appendingPathComponent(".first-run-done")
         try? "done".write(to: firstRunFile, atomically: true, encoding: .utf8)
@@ -260,8 +253,6 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func dismissOnboarding() {
         onboardingWindow?.close()
         onboardingWindow = nil
-        // Switch back to menu-bar-only mode
-        NSApp.setActivationPolicy(.accessory)
     }
 
     private var onboardingWindow: NSWindow?
