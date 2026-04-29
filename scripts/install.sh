@@ -227,6 +227,10 @@ unload_launch_agent() {
     launchctl bootout "$domain/$LAUNCH_AGENT_LABEL" >/dev/null 2>&1 || true
     launchctl disable "$domain/$LAUNCH_AGENT_LABEL" >/dev/null 2>&1 || true
     launchctl remove "$LAUNCH_AGENT_LABEL" >/dev/null 2>&1 || true
+    # Fallback for older macOS or load -w style agents
+    if [[ -f "$LAUNCH_AGENT" ]]; then
+        launchctl unload -w "$LAUNCH_AGENT" >/dev/null 2>&1 || true
+    fi
 }
 
 # ── Privileged operations (OSA auth dialog) ───────────────────────
@@ -357,7 +361,14 @@ install_launch_agent() {
 EOF
 
     unload_launch_agent
-    run "Loading launch agent" launchctl load -w "$LAUNCH_AGENT"
+    # Use bootstrap (not load -w) to avoid restarting an already-running job
+    local uid
+    uid="$(id -u)"
+    run "Loading launch agent" launchctl bootstrap "gui/${uid}" "$LAUNCH_AGENT" 2>/dev/null || true
+    # If bootstrap is not available (older macOS), fall back to load
+    if ! launchctl list "$LAUNCH_AGENT_LABEL" &>/dev/null; then
+        run "Loading launch agent (fallback)" launchctl load -w "$LAUNCH_AGENT"
+    fi
 }
 
 start_app_and_prompt_permissions() {
