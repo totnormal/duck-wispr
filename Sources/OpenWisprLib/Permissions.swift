@@ -51,6 +51,21 @@ struct Permissions {
         return true
     }
 
+    /// Returns true if the binary path changed (e.g. moved from ~/Applications to /Applications),
+    /// meaning Accessibility permissions must be reset because macOS ties them to the binary path.
+    static func requiresAccessibilityReset() -> Bool {
+        let configDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config/open-wispr")
+        let pathFile = configDir.appendingPathComponent(".last-binary-path")
+        let currentPath = Bundle.main.bundlePath
+        let previousPath = try? String(contentsOf: pathFile, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let needsReset = previousPath != nil && previousPath != currentPath
+        try? currentPath.write(to: pathFile, atomically: true, encoding: .utf8)
+        return needsReset
+    }
+
     static func openAccessibilitySettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)

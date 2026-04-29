@@ -57,10 +57,16 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        // Only reset accessibility on upgrade if the binary path changed
+        // (e.g., moving from ~/Applications to /Applications)
         if Permissions.didUpgrade() {
-            print("Accessibility: upgrade detected, resetting permissions...")
-            Permissions.resetAccessibility()
-            Thread.sleep(forTimeInterval: 1)
+            if Permissions.requiresAccessibilityReset() {
+                print("Accessibility: path change detected, resetting permissions...")
+                Permissions.resetAccessibility()
+                Thread.sleep(forTimeInterval: 1)
+            } else {
+                print("Accessibility: upgrade detected but path unchanged, keeping permissions")
+            }
         }
 
         if !AXIsProcessTrusted() {
@@ -74,9 +80,30 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
         if !AXIsProcessTrusted() {
             print("Accessibility: not granted")
-            Permissions.openAccessibilitySettings()
+
+            // Show a clear dialog explaining what the user needs to do
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "Accessibility Access Required"
+                alert.informativeText = "OpenWispr needs Accessibility access to paste transcribed text into other apps.\n\nIn the System Settings window that opens:\n1. Find OpenWispr in the list\n2. Toggle the switch ON\n3. You may need to unlock the padlock first"
+                alert.alertStyle = .informational
+                alert.addButton(withTitle: "Open Settings")
+                alert.runModal()
+                Permissions.openAccessibilitySettings()
+            }
+
             print("Waiting for Accessibility permission...")
+            let deadline = Date().addingTimeInterval(60)
             while !AXIsProcessTrusted() {
+                if Date() > deadline {
+                    let msg = "Accessibility permission not granted within 60s. Grant it in System Settings → Privacy & Security → Accessibility, then restart OpenWispr."
+                    print("Error: \(msg)")
+                    DispatchQueue.main.async {
+                        self.statusBar.state = .error(msg)
+                        self.statusBar.buildMenu()
+                    }
+                    return
+                }
                 Thread.sleep(forTimeInterval: 0.5)
             }
             print("Accessibility: granted")

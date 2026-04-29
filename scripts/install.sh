@@ -229,19 +229,45 @@ unload_launch_agent() {
     launchctl remove "$LAUNCH_AGENT_LABEL" >/dev/null 2>&1 || true
 }
 
+# ── Privileged operations (OSA auth dialog) ───────────────────────
+
+run_privileged() {
+    local description="$1"
+    shift
+    step "$description"
+    stop_spinner
+    printf "\n  ${YELLOW}${BOLD}🔐 macOS will ask for your password.${NC}\n"
+    printf "  ${DIM}Look for the authentication dialog — it may be behind this window.${NC}\n\n"
+
+    local escaped_cmd=""
+    for arg in "$@"; do
+        escaped_cmd="${escaped_cmd} $(printf '%q' "$arg")"
+    done
+
+    start_spinner "$description"
+    if osascript -e "do shell script \"${escaped_cmd}\" with administrator privileges" >>"$LOG_FILE" 2>&1; then
+        stop_spinner
+        ok "$description"
+    else
+        stop_spinner
+        fail "$description"
+        tail -n 20 "$LOG_FILE" | sed 's/^/    /'
+        die "Privileged command failed: $*"
+    fi
+}
+
 install_app() {
-    step "Installing app"
     [[ -d "$REPO_DIR/$APP_NAME" ]] || die "Bundled app not found at $REPO_DIR/$APP_NAME"
 
     unload_launch_agent
     stop_running_processes
 
     if [[ -d "$APP_DEST" ]]; then
-        run "Removing previous app" sudo rm -rf "$APP_DEST"
+        run_privileged "Removing previous app" rm -rf "$APP_DEST"
     else
         ok "No existing app to remove"
     fi
-    run "Copying app to /Applications" sudo cp -R "$REPO_DIR/$APP_NAME" "$APP_DEST"
+    run_privileged "Copying app to /Applications" cp -R "$REPO_DIR/$APP_NAME" "$APP_DEST"
     [[ -x "$APP_BINARY" ]] || die "Installed app binary not found at $APP_BINARY"
 }
 
