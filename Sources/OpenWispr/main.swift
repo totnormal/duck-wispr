@@ -177,7 +177,8 @@ case "status":
 case "--help", "-h", "help":
     printUsage()
 case nil:
-    printUsage()
+    // Launched via Finder / open / double-click — start the dictation daemon
+    cmdStart()
 default:
     print("Unknown command: \(command!)")
     printUsage()
