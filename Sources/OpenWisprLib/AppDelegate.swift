@@ -480,6 +480,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         let label = "com.openwispr.dictation"
         let plistPath = NSHomeDirectory() + "/Library/LaunchAgents/\(label).plist"
 
+        // Already installed — nothing to do
         guard !FileManager.default.fileExists(atPath: plistPath) else { return }
 
         let plist: [String: Any] = [
@@ -499,9 +500,13 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         guard let data = try? PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0) else { return }
         try? data.write(to: URL(fileURLWithPath: plistPath))
 
+        // Register with launchd for auto-start on next login.
+        // Use bootstrap (not load -w) to avoid restarting an already-running job.
         let task = Process()
         task.launchPath = "/bin/launchctl"
-        task.arguments = ["load", "-w", plistPath]
+        let uid = getuid()
+        task.arguments = ["bootstrap", "gui/\(uid)", plistPath]
+        // If bootstrap fails (e.g. already loaded), just keep the plist — it'll load on next login
         try? task.run()
         task.waitUntilExit()
     }
