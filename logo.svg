@@ -2,36 +2,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#19c3dc"/>
-      <stop offset="100%" stop-color="#238cb4"/>
+      <stop offset="0%" stop-color="#0f041e"/>
+      <stop offset="100%" stop-color="#1a0a32"/>
+    </linearGradient>
+    <linearGradient id="duck" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4da0d4"/>
+      <stop offset="30%" stop-color="#9b26b5"/>
+      <stop offset="60%" stop-color="#e91e8c"/>
+      <stop offset="100%" stop-color="#ff6d3a"/>
     </linearGradient>
   </defs>
-  <!-- Rounded rect background -->
   <rect x="30" y="30" width="964" height="964" rx="200" ry="200" fill="url(#bg)"/>
-  <!-- Subtle light overlay -->
-  <ellipse cx="300" cy="300" rx="350" ry="350" fill="white" opacity="0.08"/>
-  <!-- Tail feathers -->
-  <polygon points="250,490 140,380 175,410 120,360 170,390 155,340 210,400" fill="#fffceb"/>
-  <!-- Body -->
-  <ellipse cx="420" cy="560" rx="200" ry="140" fill="#fffceb"/>
-  <!-- Neck -->
-  <polygon points="470,430 530,340 630,465 575,485 440,470" fill="#fffceb"/>
-  <!-- Head -->
-  <circle cx="630" cy="370" r="105" fill="#fffceb"/>
-  <!-- Beak -->
-  <polygon points="720,338 800,375 720,405 685,375" fill="#ffa014"/>
-  <!-- Beak line -->
-  <line x1="695" y1="375" x2="795" y2="375" stroke="#e08c0a" stroke-width="4"/>
-  <!-- Wing -->
-  <polygon points="340,510 510,470 550,570 490,630 360,610" fill="#f0edda"/>
-  <!-- Wing lines -->
-  <line x1="390" y1="525" x2="510" y2="585" stroke="#e1dece" stroke-width="3"/>
-  <line x1="420" y1="555" x2="510" y2="595" stroke="#e1dece" stroke-width="3"/>
-  <!-- Eye -->
-  <circle cx="660" cy="352" r="18" fill="#191923"/>
-  <circle cx="657" cy="348" r="5" fill="white" opacity="0.9"/>
-  <!-- Water ripples -->
-  <ellipse cx="420" cy="705" rx="260" ry="6" fill="none" stroke="white" stroke-width="2" opacity="0.25"/>
-  <ellipse cx="420" cy="725" rx="190" ry="5" fill="none" stroke="white" stroke-width="2" opacity="0.18"/>
-  <ellipse cx="420" cy="742" rx="130" ry="4" fill="none" stroke="white" stroke-width="1.5" opacity="0.12"/>
+  <text x="512" y="620" font-size="700" text-anchor="middle" 
+        font-family="AppleColorEmoji, 'Segoe UI Emoji', sans-serif">🦆</text>
 </svg>
