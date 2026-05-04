@@ -94,7 +94,7 @@ func cmdSetLanguage(_ lang: String) {
     guard validCodes.contains(lang) else {
         print("Error: Unknown language '\(lang)'")
         print("Available: auto, en, fr, de, es, zh, ja, ko, pt, it, nl, ru, ...")
-        print("See full list: https://github.com/human37/open-wispr")
+        print("See full list: https://github.com/human37/duck-wispr")
         exit(1)
     }
 
