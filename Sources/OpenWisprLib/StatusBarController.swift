@@ -281,6 +281,51 @@ class StatusBarController: NSObject {
         toggleItem.state = (config.toggleMode?.value ?? false) ? .on : .off
         menu.addItem(toggleItem)
 
+        // Media pause submenu
+        let mediaItem = NSMenuItem(title: "Pause Media", action: nil, keyEquivalent: "")
+        let mediaSubmenu = NSMenu()
+
+        let mediaOffTarget = MenuItemTarget { [weak self] in
+            var cfg = Config.load()
+            cfg.pauseMediaWhileRecording = FlexBool(false)
+            try? cfg.save()
+            self?.onConfigChange?(cfg)
+        }
+        menuItemTargets.append(mediaOffTarget)
+        let mediaOffItem = NSMenuItem(title: "Off", action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
+        mediaOffItem.target = mediaOffTarget
+        if config.pauseMediaWhileRecording?.value != true { mediaOffItem.state = .on }
+        mediaSubmenu.addItem(mediaOffItem)
+
+        let mediaPauseTarget = MenuItemTarget { [weak self] in
+            var cfg = Config.load()
+            cfg.pauseMediaWhileRecording = FlexBool(true)
+            cfg.mediaStrategy = "pause"
+            try? cfg.save()
+            self?.onConfigChange?(cfg)
+        }
+        menuItemTargets.append(mediaPauseTarget)
+        let mediaPauseItem = NSMenuItem(title: "Pause & Resume", action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
+        mediaPauseItem.target = mediaPauseTarget
+        if config.pauseMediaWhileRecording?.value == true && config.mediaStrategy != "duck" { mediaPauseItem.state = .on }
+        mediaSubmenu.addItem(mediaPauseItem)
+
+        let mediaDuckTarget = MenuItemTarget { [weak self] in
+            var cfg = Config.load()
+            cfg.pauseMediaWhileRecording = FlexBool(true)
+            cfg.mediaStrategy = "duck"
+            try? cfg.save()
+            self?.onConfigChange?(cfg)
+        }
+        menuItemTargets.append(mediaDuckTarget)
+        let mediaDuckItem = NSMenuItem(title: "Duck Volume", action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
+        mediaDuckItem.target = mediaDuckTarget
+        if config.pauseMediaWhileRecording?.value == true && config.mediaStrategy == "duck" { mediaDuckItem.state = .on }
+        mediaSubmenu.addItem(mediaDuckItem)
+
+        mediaItem.submenu = mediaSubmenu
+        menu.addItem(mediaItem)
+
         let proofreadingItem = NSMenuItem(title: "Proofreading", action: nil, keyEquivalent: "")
         let proofreadingSubmenu = NSMenu()
         let currentProofreadingMode = config.proofreadingMode ?? .standard

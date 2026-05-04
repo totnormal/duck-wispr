@@ -10,6 +10,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     var isPressed = false
     var isReady = false
     public var lastTranscription: String?
+    var mediaManager: MediaManager?
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
         statusBar = StatusBarController()
@@ -357,6 +358,14 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleRecordingStart() {
         guard !isPressed else { return }
         isPressed = true
+
+        // Pause/duck media if configured
+        if config.pauseMediaWhileRecording?.value == true {
+            mediaManager = MediaManager()
+            let strategy: MediaManager.PauseStrategy = (config.mediaStrategy == "duck") ? .duck : .pause
+            mediaManager?.pauseMedia(strategy: strategy)
+        }
+
         statusBar.state = .recording
         do {
             let outputURL: URL
@@ -376,6 +385,13 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleRecordingStop() {
         guard isPressed else { return }
         isPressed = false
+
+        // Resume media if we paused/ducked it
+        if let mm = mediaManager {
+            let strategy: MediaManager.PauseStrategy = (config.mediaStrategy == "duck") ? .duck : .pause
+            mm.resumeMedia(strategy: strategy)
+            mediaManager = nil
+        }
 
         guard let audioURL = recorder.stopRecording() else {
             statusBar.state = .idle
