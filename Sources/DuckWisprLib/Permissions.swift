@@ -29,16 +29,16 @@ struct Permissions {
     static func resetAccessibility() {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
-        process.arguments = ["reset", "Accessibility", "com.human37.open-wispr"]
+        process.arguments = ["reset", "Accessibility", "com.human37.duck-wispr"]
         try? process.run()
         process.waitUntilExit()
     }
 
     static func didUpgrade() -> Bool {
         let configDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/open-wispr")
+            .appendingPathComponent(".config/duck-wispr")
         let versionFile = configDir.appendingPathComponent(".last-version")
-        let current = OpenWispr.version
+        let current = DuckWispr.version
         let previous = try? String(contentsOf: versionFile, encoding: .utf8)
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -55,7 +55,7 @@ struct Permissions {
     /// meaning Accessibility permissions must be reset because macOS ties them to the binary path.
     static func requiresAccessibilityReset() -> Bool {
         let configDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/open-wispr")
+            .appendingPathComponent(".config/duck-wispr")
         let pathFile = configDir.appendingPathComponent(".last-binary-path")
         let currentPath = Bundle.main.bundlePath
         let previousPath = try? String(contentsOf: pathFile, encoding: .utf8)

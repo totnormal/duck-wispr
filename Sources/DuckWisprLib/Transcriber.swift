@@ -174,7 +174,7 @@ public class Transcriber {
     }
 
     /// Deletes all downloaded models except the one being kept.
-    /// Only cleans the given directory (default: ~/.config/open-wispr/models/).
+    /// Only cleans the given directory (default: ~/.config/duck-wispr/models/).
     public static func deleteOtherModels(keeping modelSize: String, in directory: String? = nil) {
         let dir = directory ?? "\(Config.configDir.path)/models"
         guard let files = try? FileManager.default.contentsOfDirectory(atPath: dir) else { return }
@@ -203,7 +203,7 @@ enum TranscriberError: LocalizedError {
         case .whisperNotFound:
             return "whisper-cpp not found. Install it with: brew install whisper-cpp"
         case .modelNotFound(let size):
-            return "Whisper model '\(size)' not found. Download it with: open-wispr download-model \(size)"
+            return "Whisper model '\(size)' not found. Download it with: duck-wispr download-model \(size)"
         case .transcriptionFailed:
             return "Transcription failed"
         }

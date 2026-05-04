@@ -1,5 +1,5 @@
 import XCTest
-@testable import OpenWisprLib
+@testable import DuckWisprLib
 
 final class RecordingStoreTests: XCTestCase {
     private var testDir: URL!
@@ -8,7 +8,7 @@ final class RecordingStoreTests: XCTestCase {
     override func setUp() {
         super.setUp()
         savedDir = RecordingStore.recordingsDir
-        testDir = FileManager.default.temporaryDirectory.appendingPathComponent("open-wispr-test-\(UUID().uuidString)")
+        testDir = FileManager.default.temporaryDirectory.appendingPathComponent("duck-wispr-test-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: testDir, withIntermediateDirectories: true)
         RecordingStore.recordingsDir = testDir
     }
@@ -34,7 +34,7 @@ final class RecordingStoreTests: XCTestCase {
 
     func testTempRecordingURL() {
         let url = RecordingStore.tempRecordingURL()
-        XCTAssertEqual(url.lastPathComponent, "open-wispr-recording.wav")
+        XCTAssertEqual(url.lastPathComponent, "duck-wispr-recording.wav")
     }
 
     func testListRecordingsEmpty() {

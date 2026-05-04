@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "open-wispr",
+    name: "duck-wispr",
     platforms: [.macOS(.v13)],
     targets: [
         .target(
-            name: "OpenWisprLib",
-            path: "Sources/OpenWisprLib",
+            name: "DuckWisprLib",
+            path: "Sources/DuckWisprLib",
             linkerSettings: [
                 .linkedFramework("CoreAudio"),
                 .linkedFramework("AVFoundation"),
@@ -15,14 +15,14 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "open-wispr",
-            dependencies: ["OpenWisprLib"],
-            path: "Sources/OpenWispr"
+            name: "duck-wispr",
+            dependencies: ["DuckWisprLib"],
+            path: "Sources/DuckWispr"
         ),
         .testTarget(
-            name: "OpenWisprTests",
-            dependencies: ["OpenWisprLib"],
-            path: "Tests/OpenWisprTests"
+            name: "DuckWisprTests",
+            dependencies: ["DuckWisprLib"],
+            path: "Tests/DuckWisprTests"
         ),
     ]
 )

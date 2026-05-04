@@ -90,7 +90,7 @@ class StatusBarController: NSObject {
 
         let menu = NSMenu()
 
-        let titleItem = NSMenuItem(title: "OpenWispr v\(OpenWispr.version)", action: nil, keyEquivalent: "")
+        let titleItem = NSMenuItem(title: "DuckWispr v\(DuckWispr.version)", action: nil, keyEquivalent: "")
         titleItem.isEnabled = false
         menu.addItem(titleItem)
 
@@ -602,22 +602,38 @@ class StatusBarController: NSObject {
         let image = NSImage(size: size, flipped: false) { rect in
             NSColor.black.setFill()
 
-            let barWidth: CGFloat = 2.0
-            let gap: CGFloat = 2.5
-            let radius: CGFloat = 1.5
-            let centerX = rect.midX
-            let centerY = rect.midY
+            let cx = rect.midX
+            let cy = rect.midY
 
-            let heights: [CGFloat] = [4, 8, 12, 8, 4]
-            let totalWidth = CGFloat(heights.count) * barWidth + CGFloat(heights.count - 1) * gap
-            let startX = centerX - totalWidth / 2
+            // Duck body (ellipse)
+            let bodyRect = NSRect(x: cx - 5.5, y: cy - 5.5, width: 11, height: 7)
+            NSBezierPath(ovalIn: bodyRect).fill()
 
-            for (i, height) in heights.enumerated() {
-                let x = startX + CGFloat(i) * (barWidth + gap)
-                let y = centerY - height / 2
-                let barRect = NSRect(x: x, y: y, width: barWidth, height: height)
-                NSBezierPath(roundedRect: barRect, xRadius: radius, yRadius: radius).fill()
-            }
+            // Duck head (circle)
+            let headRect = NSRect(x: cx + 2.5, y: cy + 0.5, width: 6, height: 6)
+            NSBezierPath(ovalIn: headRect).fill()
+
+            // Duck beak (triangle pointing right)
+            let beak = NSBezierPath()
+            beak.move(to: NSPoint(x: cx + 8.5, y: cy + 3.5))
+            beak.line(to: NSPoint(x: cx + 12, y: cy + 2.8))
+            beak.line(to: NSPoint(x: cx + 8.5, y: cy + 2.2))
+            beak.close()
+            beak.fill()
+
+            // Duck tail (small triangle pointing left-back)
+            let tail = NSBezierPath()
+            tail.move(to: NSPoint(x: cx - 5.5, y: cy + 1))
+            tail.line(to: NSPoint(x: cx - 8, y: cy + 3.5))
+            tail.line(to: NSPoint(x: cx - 5.5, y: cy - 2))
+            tail.close()
+            tail.fill()
+
+            // Eye (white dot)
+            NSColor.white.setFill()
+            let eyeRect = NSRect(x: cx + 6, y: cy + 4.2, width: 1.5, height: 1.5)
+            NSBezierPath(ovalIn: eyeRect).fill()
+
             return true
         }
         image.isTemplate = true

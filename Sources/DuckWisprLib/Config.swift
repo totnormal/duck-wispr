@@ -183,7 +183,7 @@ public struct Config: Codable {
 
     public static var configDir: URL {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        return home.appendingPathComponent(".config/open-wispr")
+        return home.appendingPathComponent(".config/duck-wispr")
     }
 
     public static var configFile: URL {

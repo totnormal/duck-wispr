@@ -26,7 +26,7 @@ public class RecordingStore {
     }
 
     public static func tempRecordingURL() -> URL {
-        FileManager.default.temporaryDirectory.appendingPathComponent("open-wispr-recording.wav")
+        FileManager.default.temporaryDirectory.appendingPathComponent("duck-wispr-recording.wav")
     }
 
     public static func newRecordingURL() -> URL {

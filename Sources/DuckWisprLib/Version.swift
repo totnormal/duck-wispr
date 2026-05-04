@@ -1,3 +1,3 @@
-public enum OpenWispr {
+public enum DuckWispr {
     public static let version = "0.37.0"
 }

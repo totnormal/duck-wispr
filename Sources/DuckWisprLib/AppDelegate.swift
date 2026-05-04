@@ -92,7 +92,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 let alert = NSAlert()
                 alert.messageText = "Accessibility Access Required"
-                alert.informativeText = "OpenWispr needs Accessibility access to paste transcribed text into other apps.\n\nIn the System Settings window that opens:\n1. Find OpenWispr in the list\n2. Toggle the switch ON\n3. You may need to unlock the padlock first"
+                alert.informativeText = "DuckWispr needs Accessibility access to paste transcribed text into other apps.\n\nIn the System Settings window that opens:\n1. Find DuckWispr in the list\n2. Toggle the switch ON\n3. You may need to unlock the padlock first"
                 alert.alertStyle = .informational
                 alert.addButton(withTitle: "Open Settings")
                 alert.runModal()
@@ -103,7 +103,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             let deadline = Date().addingTimeInterval(60)
             while !AXIsProcessTrusted() {
                 if Date() > deadline {
-                    let msg = "Accessibility permission not granted within 60s. Grant it in System Settings → Privacy & Security → Accessibility, then restart OpenWispr."
+                    let msg = "Accessibility permission not granted within 60s. Grant it in System Settings → Privacy & Security → Accessibility, then restart DuckWispr."
                     print("Error: \(msg)")
                     DispatchQueue.main.async {
                         self.statusBar.state = .error(msg)
@@ -141,7 +141,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         if let modelPath = Transcriber.findModel(modelSize: config.modelSize) {
             let modelURL = URL(fileURLWithPath: modelPath)
             if !ModelDownloader.isValidGGMLFile(at: modelURL) {
-                let msg = "Model file is corrupted. Re-download with: open-wispr download-model \(config.modelSize)"
+                let msg = "Model file is corrupted. Re-download with: duck-wispr download-model \(config.modelSize)"
                 print("Error: \(msg)")
                 DispatchQueue.main.async {
                     self.statusBar.state = .error(msg)
@@ -182,7 +182,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         statusBar.buildMenu()
 
         let hotkeyDesc = KeyCodes.describe(keyCode: config.hotkey.keyCode, modifiers: config.hotkey.modifiers)
-        print("open-wispr v\(OpenWispr.version)")
+        print("duck-wispr v\(DuckWispr.version)")
         print("Hotkey: \(hotkeyDesc)")
         print("Model: \(config.modelSize)")
         print("Ready.")
@@ -204,7 +204,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "OpenWispr"
+        window.title = "DuckWispr"
         window.center()
         window.level = .floating
 
@@ -218,7 +218,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         view.addSubview(icon)
 
         let title = NSTextField(frame: NSRect(x: 80, y: 110, width: 280, height: 24))
-        title.stringValue = "OpenWispr is ready!"
+        title.stringValue = "DuckWispr is ready!"
         title.font = NSFont.boldSystemFont(ofSize: 16)
         title.isBezeled = false
         title.isEditable = false
@@ -227,7 +227,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
         let desc = NSTextField(frame: NSRect(x: 80, y: 55, width: 280, height: 48))
         let hotkeyDesc = KeyCodes.describe(keyCode: config.hotkey.keyCode, modifiers: config.hotkey.modifiers)
-        desc.stringValue = "Look for the 🌊 icon in your menu bar.\nHold \(hotkeyDesc), speak, release — dictation appears."
+        desc.stringValue = "Look for the 🦆 icon in your menu bar.\nHold \(hotkeyDesc), speak, release — dictation appears."
         desc.font = NSFont.systemFont(ofSize: 12)
         desc.isBezeled = false
         desc.isEditable = false
@@ -496,7 +496,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     // ── Launch agent (auto-start on login) ───────────────────────────
 
     private func installLaunchAgentIfNeeded() {
-        let label = "com.openwispr.dictation"
+        let label = "com.duckwispr.dictation"
         let plistPath = NSHomeDirectory() + "/Library/LaunchAgents/\(label).plist"
 
         // Already installed — nothing to do
@@ -504,12 +504,12 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
         let plist: [String: Any] = [
             "Label": label,
-            "ProgramArguments": [Bundle.main.executablePath ?? "/Applications/OpenWispr.app/Contents/MacOS/open-wispr", "start"],
+            "ProgramArguments": [Bundle.main.executablePath ?? "/Applications/DuckWispr.app/Contents/MacOS/duck-wispr", "start"],
             "RunAtLoad": true,
             "KeepAlive": false,
             "ProcessType": "Interactive",
-            "StandardOutPath": NSHomeDirectory() + "/Library/Logs/open-wispr.log",
-            "StandardErrorPath": NSHomeDirectory() + "/Library/Logs/open-wispr.log",
+            "StandardOutPath": NSHomeDirectory() + "/Library/Logs/duck-wispr.log",
+            "StandardErrorPath": NSHomeDirectory() + "/Library/Logs/duck-wispr.log",
         ]
 
         guard let dir = (plistPath as NSString).deletingLastPathComponent as String?,

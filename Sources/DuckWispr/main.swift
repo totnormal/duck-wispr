@@ -1,31 +1,31 @@
 import AppKit
 import Foundation
-import OpenWisprLib
+import DuckWisprLib
 
 setvbuf(stdout, nil, _IOLBF, 0)
 setvbuf(stderr, nil, _IOLBF, 0)
 
-let version = OpenWispr.version
+let version = DuckWispr.version
 
 func printUsage() {
     print("""
-    open-wispr v\(version) — Push-to-talk voice dictation for macOS
+    duck-wispr v\(version) — Push-to-talk voice dictation for macOS
 
     USAGE:
-        open-wispr start              Start the dictation daemon
-        open-wispr set-hotkey <key>   Set the push-to-talk hotkey
-        open-wispr get-hotkey         Show current hotkey
-        open-wispr set-model <size>   Set the Whisper model
-        open-wispr set-language <code>  Set the language (e.g. en, fr, auto)
-        open-wispr download-model [size]  Download a Whisper model
-        open-wispr status             Show configuration and status
-        open-wispr --help             Show this help message
+        duck-wispr start              Start the dictation daemon
+        duck-wispr set-hotkey <key>   Set the push-to-talk hotkey
+        duck-wispr get-hotkey         Show current hotkey
+        duck-wispr set-model <size>   Set the Whisper model
+        duck-wispr set-language <code>  Set the language (e.g. en, fr, auto)
+        duck-wispr download-model [size]  Download a Whisper model
+        duck-wispr status             Show configuration and status
+        duck-wispr --help             Show this help message
 
     HOTKEY EXAMPLES:
-        open-wispr set-hotkey globe             Globe/fn key (default)
-        open-wispr set-hotkey rightoption        Right Option key
-        open-wispr set-hotkey f5                 F5 key
-        open-wispr set-hotkey ctrl+space         Ctrl + Space
+        duck-wispr set-hotkey globe             Globe/fn key (default)
+        duck-wispr set-hotkey rightoption        Right Option key
+        duck-wispr set-hotkey f5                 F5 key
+        duck-wispr set-hotkey ctrl+space         Ctrl + Space
 
     AVAILABLE MODELS:
         \(Config.supportedModels.joined(separator: ", "))
@@ -40,7 +40,7 @@ func cmdStart() {
     app.delegate = delegate
 
     signal(SIGINT) { _ in
-        print("\nStopping open-wispr...")
+        print("\nStopping duck-wispr...")
         exit(0)
     }
 
@@ -50,7 +50,7 @@ func cmdStart() {
 func cmdSetHotkey(_ keyString: String) {
     guard let parsed = KeyCodes.parse(keyString) else {
         print("Error: Unknown key '\(keyString)'")
-        print("Run 'open-wispr --help' for examples")
+        print("Run 'duck-wispr --help' for examples")
         exit(1)
     }
 
@@ -130,7 +130,7 @@ func cmdStatus() {
     let config = Config.load()
     let hotkeyDesc = KeyCodes.describe(keyCode: config.hotkey.keyCode, modifiers: config.hotkey.modifiers)
 
-    print("open-wispr v\(version)")
+    print("duck-wispr v\(version)")
     print("Config:      \(Config.configFile.path)")
     print("Hotkey:      \(hotkeyDesc)")
     print("Model:       \(config.modelSize)")
@@ -150,19 +150,19 @@ case "start":
     cmdStart()
 case "set-hotkey":
     guard args.count > 2 else {
-        print("Usage: open-wispr set-hotkey <key>")
+        print("Usage: duck-wispr set-hotkey <key>")
         exit(1)
     }
     cmdSetHotkey(args[2])
 case "set-model":
     guard args.count > 2 else {
-        print("Usage: open-wispr set-model <size>")
+        print("Usage: duck-wispr set-model <size>")
         exit(1)
     }
     cmdSetModel(args[2])
 case "set-language":
     guard args.count > 2 else {
-        print("Usage: open-wispr set-language <code>")
+        print("Usage: duck-wispr set-language <code>")
         print("Examples: en, fr, auto")
         exit(1)
     }
