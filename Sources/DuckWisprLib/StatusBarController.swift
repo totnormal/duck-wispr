@@ -133,11 +133,16 @@ class StatusBarController: NSObject {
         let langItem = NSMenuItem(title: "Language: \(langName)", action: nil, keyEquivalent: "")
         let langSubmenu = NSMenu()
 
+        let favorites = Set(config.favoriteLanguages ?? [])
+
         for (index, lang) in Config.supportedLanguages.enumerated() {
             if index == 1 {
                 langSubmenu.addItem(NSMenuItem.separator())
             }
-            let target = MenuItemTarget { [weak self] in
+            let isFavorite = favorites.contains(lang.code) && lang.code != "auto"
+            let title = isFavorite ? "★ \(lang.name)" : lang.name
+
+            let selectTarget = MenuItemTarget { [weak self] in
                 var cfg = Config.load()
                 cfg.language = lang.code
                 if lang.code != "en" && cfg.modelSize.hasSuffix(".en") {
@@ -154,13 +159,35 @@ class StatusBarController: NSObject {
                 try? cfg.save()
                 self?.onConfigChange?(cfg)
             }
-            self.menuItemTargets.append(target)
-            let item = NSMenuItem(title: lang.name, action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
-            item.target = target
+            self.menuItemTargets.append(selectTarget)
+            let item = NSMenuItem(title: title, action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
+            item.target = selectTarget
             if lang.code == currentLang {
                 item.state = .on
             }
             langSubmenu.addItem(item)
+
+            // Add "Toggle Favorite" submenu item for each non-auto language
+            if lang.code != "auto" {
+                let starAction = isFavorite ? "☆ Remove from Favorites" : "★ Add to Favorites"
+                let starTarget = MenuItemTarget { [weak self] in
+                    var cfg = Config.load()
+                    var favs = cfg.favoriteLanguages ?? []
+                    if let idx = favs.firstIndex(of: lang.code) {
+                        favs.remove(at: idx)
+                    } else {
+                        favs.append(lang.code)
+                    }
+                    cfg.favoriteLanguages = favs.isEmpty ? nil : favs
+                    try? cfg.save()
+                    self?.buildMenu()
+                }
+                self.menuItemTargets.append(starTarget)
+                let starItem = NSMenuItem(title: starAction, action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
+                starItem.target = starTarget
+                starItem.indentationLevel = 1
+                langSubmenu.addItem(starItem)
+            }
         }
 
         langItem.submenu = langSubmenu

@@ -3,6 +3,48 @@ import Foundation
 public class Transcriber {
     private static let maxPromptCharacters = 200
 
+    /// Sample phrases in each language to bias whisper-cpp's auto-detection toward favorite languages.
+    private static let languageBiasSamples: [String: String] = [
+        "en": "The quick brown fox jumps over the lazy dog",
+        "zh": "这是一个中文语音识别测试",
+        "de": "Der schnelle braune Fuchs springt über den faulen Hund",
+        "es": "El rápido zorro marrón salta sobre el perro perezoso",
+        "ru": "Привет, это проверка распознавания русской речи",
+        "ko": "안녕하세요 이것은 한국어 음성 인식 테스트입니다",
+        "fr": "Le rapide renard brun saute par dessus le chien paresseux",
+        "ja": "こんにちは、これは日本語の音声認識テストです",
+        "pt": "A rápida raposa marrom pula sobre o cão preguiçoso",
+        "tr": "Merhaba bu bir Türkçe ses tanıma testidir",
+        "pl": "Szybki brązowy lis przeskakuje nad leniwym psem",
+        "nl": "De snelle bruine vos springt over de luie hond",
+        "ar": "مرحبا هذا اختبار للتعرف على الكلام العربي",
+        "sv": "Den snabba bruna räven hoppar över den lata hunden",
+        "it": "La rapida volpe marrone salta sopra il cane pigro",
+        "hi": "नमस्ते यह हिंदी भाषण पहचान परीक्षण है",
+        "fi": "Nopea ruskea kettu hyppää laiskan koiran yli",
+        "vi": "Con cáo nâu nhanh nhẹn nhảy qua con chó lười biếng",
+        "uk": "Привіт це тест розпізнавання української мови",
+        "el": "Η γρήγορη καφέ αλεπού πηδάει πάνω από τον τεμπέλη σκύλο",
+        "cs": "Rychlá hnědá liška skáče přes líného psa",
+        "ro": "Vulpea brună rapidă sare peste câinele leneș",
+        "hu": "A gyors barna róka átugrik a lusta kutyán",
+        "no": "Den raske brune reven hopper over den late hunden",
+        "th": "สวัสดีนี่คือการทดสอบการรู้ภาษาไทย",
+        "da": "Den hurtige brune ræv springer over den dovne hund",
+        "bg": "Бързата кафява лисица скача над мързеливото куче",
+        "hr": "Brza smeđa lisica skače preko lijenog psa",
+        "he": "השועל החום המהיר קופץ מעל הכלב העצלן",
+        "id": "Rubah coklat yang cepat melompati anjing pemalas",
+    ]
+
+    /// Builds a bias prompt from favorite language codes.
+    /// Returns nil if no favorites or no matching samples.
+    private static func buildFavoriteBias(_ favorites: [String]) -> String? {
+        let parts = favorites.compactMap { languageBiasSamples[$0] }
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: ". ")
+    }
+
     private let modelSize: String
     private let language: String
 
@@ -29,8 +71,26 @@ public class Transcriber {
             "--no-timestamps",
             "-nt",
         ]
-        if let prompt = Transcriber.sanitizedPrompt(prompt), !prompt.isEmpty {
-            args += ["--prompt", prompt]
+        // When auto-detect with favorite languages, prepend bias text
+        let combinedPrompt: String?
+        if language == "auto" {
+            let config = Config.load()
+            if let favorites = config.favoriteLanguages, !favorites.isEmpty,
+               let bias = Transcriber.buildFavoriteBias(favorites) {
+                if let existing = Transcriber.sanitizedPrompt(prompt), !existing.isEmpty {
+                    let combined = bias + ". " + existing
+                    combinedPrompt = Transcriber.sanitizedPrompt(combined)
+                } else {
+                    combinedPrompt = Transcriber.sanitizedPrompt(bias)
+                }
+            } else {
+                combinedPrompt = Transcriber.sanitizedPrompt(prompt)
+            }
+        } else {
+            combinedPrompt = Transcriber.sanitizedPrompt(prompt)
+        }
+        if let promptArg = combinedPrompt, !promptArg.isEmpty {
+            args += ["--prompt", promptArg]
         }
         process.arguments = args
 

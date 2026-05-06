@@ -31,6 +31,7 @@ public struct Config: Codable {
     public var audioInputDeviceID: UInt32?
     public var pauseMediaWhileRecording: FlexBool?
     public var mediaStrategy: String? // "pause" or "duck"
+    public var favoriteLanguages: [String]?
 
     public static let supportedLanguages: [LanguageOption] = [
         LanguageOption(code: "auto", name: "Auto-Detect"),
@@ -178,7 +179,8 @@ public struct Config: Codable {
         maxRecordings: nil,
         toggleMode: FlexBool(false),
         pauseMediaWhileRecording: nil,
-        mediaStrategy: nil
+        mediaStrategy: nil,
+        favoriteLanguages: nil
     )
 
     public static var configDir: URL {
