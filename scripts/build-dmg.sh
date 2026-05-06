@@ -178,7 +178,6 @@ DMG_PATH="$REPO_DIR/${DMG_NAME}.dmg"
 rm -f "$DMG_PATH"
 
 # Use hdiutil to create a DMG with the app + a symlink to /Applications
-mkdir -p "$STAGING_DIR/Applications"
 ln -s /Applications "$STAGING_DIR/Applications"
 
 # Create a background image with instructions
