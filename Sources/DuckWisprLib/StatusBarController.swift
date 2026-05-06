@@ -6,7 +6,7 @@ class MenuItemTarget: NSObject {
     @objc func invoke() { handler() }
 }
 
-class StatusBarController: NSObject, NSMenuDelegate {
+class StatusBarController: NSObject {
     private var statusItem: NSStatusItem
     private var animationTimer: Timer?
     private var animationFrame = 0
@@ -16,8 +16,6 @@ class StatusBarController: NSObject, NSMenuDelegate {
     private var copiedFeedback = false
     private var menuItemTargets: [MenuItemTarget] = []
     private var stateMenuItem: NSMenuItem?
-    private var langSubmenu: NSMenu?
-    private var optionMenuToggle = false
 
     var reprocessHandler: ((URL) -> Void)?
     var onConfigChange: ((Config) -> Void)?
@@ -60,10 +58,6 @@ class StatusBarController: NSObject, NSMenuDelegate {
             self?.copiedFeedback = false
             self?.buildMenu()
         }
-    }
-
-    func menuWillOpen(_ menu: NSMenu) {
-        optionMenuToggle = (menu === langSubmenu) && NSEvent.modifierFlags.contains(.option)
     }
 
     func updateDownloadProgress(_ text: String?, percent: Double = 0) {
@@ -138,8 +132,6 @@ class StatusBarController: NSObject, NSMenuDelegate {
         let langName = Config.supportedLanguages.first(where: { $0.code == currentLang })?.name ?? currentLang
         let langItem = NSMenuItem(title: "Language: \(langName)", action: nil, keyEquivalent: "")
         let langSubmenu = NSMenu()
-        self.langSubmenu = langSubmenu
-        langSubmenu.delegate = self
 
         let favorites = Set(config.favoriteLanguages ?? [])
 
@@ -151,7 +143,7 @@ class StatusBarController: NSObject, NSMenuDelegate {
             let title = isFavorite ? "★ \(lang.name)" : lang.name
 
             let selectTarget = MenuItemTarget { [weak self] in
-                let isToggle = self?.optionMenuToggle == true && lang.code != "auto"
+                let isToggle = NSEvent.modifierFlags.contains(.option) && lang.code != "auto"
                 var cfg = Config.load()
                 if isToggle {
                     var favs = cfg.favoriteLanguages ?? []

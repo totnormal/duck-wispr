@@ -1,3 +1,3 @@
 public enum DuckWispr {
-    public static let version = "0.37.0"
+    public static let version = "0.1.3"
 }
