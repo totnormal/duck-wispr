@@ -72,16 +72,34 @@ public class Transcriber {
             "-nt",
         ]
         // When auto-detect with favorite languages, prepend bias text
+        // Bias is trimmed first if needed so the continuity prompt is preserved
         let combinedPrompt: String?
         if language == "auto" {
             let config = Config.load()
             if let favorites = config.favoriteLanguages, !favorites.isEmpty,
                let bias = Transcriber.buildFavoriteBias(favorites) {
-                if let existing = Transcriber.sanitizedPrompt(prompt), !existing.isEmpty {
-                    let combined = bias + ". " + existing
-                    combinedPrompt = Transcriber.sanitizedPrompt(combined)
+                let existingPrompt = Transcriber.sanitizedPrompt(prompt)
+                let existingCount = existingPrompt?.count ?? 0
+                if existingCount >= Transcriber.maxPromptCharacters {
+                    combinedPrompt = existingPrompt
                 } else {
-                    combinedPrompt = Transcriber.sanitizedPrompt(bias)
+                    let budget = Transcriber.maxPromptCharacters - existingCount - 2
+                    let trimmedBias: String
+                    if budget > 0 && bias.count > budget {
+                        let start = bias.index(bias.endIndex, offsetBy: -budget)
+                        trimmedBias = String(bias[start...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    } else if budget > 0 {
+                        trimmedBias = bias
+                    } else {
+                        trimmedBias = ""
+                    }
+                    if let existing = existingPrompt, !trimmedBias.isEmpty {
+                        combinedPrompt = Transcriber.sanitizedPrompt(trimmedBias + ". " + existing)
+                    } else if !trimmedBias.isEmpty {
+                        combinedPrompt = Transcriber.sanitizedPrompt(trimmedBias)
+                    } else {
+                        combinedPrompt = existingPrompt
+                    }
                 }
             } else {
                 combinedPrompt = Transcriber.sanitizedPrompt(prompt)

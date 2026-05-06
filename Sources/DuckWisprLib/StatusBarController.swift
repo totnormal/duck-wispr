@@ -167,9 +167,9 @@ class StatusBarController: NSObject {
             }
             langSubmenu.addItem(item)
 
-            // Add "Toggle Favorite" submenu item for each non-auto language
+            // Option-click alternate: toggle favorite (macOS standard alternate menu pattern)
             if lang.code != "auto" {
-                let starAction = isFavorite ? "☆ Remove from Favorites" : "★ Add to Favorites"
+                let starTitle = isFavorite ? "☆ Remove from Favorites" : "★ Add to Favorites"
                 let starTarget = MenuItemTarget { [weak self] in
                     var cfg = Config.load()
                     var favs = cfg.favoriteLanguages ?? []
@@ -183,9 +183,10 @@ class StatusBarController: NSObject {
                     self?.buildMenu()
                 }
                 self.menuItemTargets.append(starTarget)
-                let starItem = NSMenuItem(title: starAction, action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
+                let starItem = NSMenuItem(title: starTitle, action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
                 starItem.target = starTarget
-                starItem.indentationLevel = 1
+                starItem.isAlternate = true
+                starItem.keyEquivalentModifierMask = .option
                 langSubmenu.addItem(starItem)
             }
         }
@@ -627,40 +628,46 @@ class StatusBarController: NSObject {
     static func drawLogo(active: Bool) -> NSImage {
         let size = NSSize(width: 18, height: 18)
         let image = NSImage(size: size, flipped: false) { rect in
-            NSColor.black.setFill()
-
+            if active {
+                NSColor.controlAccentColor.set()
+            } else {
+                NSColor.labelColor.set()
+            }
+            
             let cx = rect.midX
             let cy = rect.midY
-
-            // Duck body (ellipse)
-            let bodyRect = NSRect(x: cx - 5.5, y: cy - 5.5, width: 11, height: 7)
+            
+            // Body (centered)
+            let bodyRect = NSRect(x: cx - 6, y: cy - 4, width: 10, height: 7)
             NSBezierPath(ovalIn: bodyRect).fill()
-
-            // Duck head (circle)
-            let headRect = NSRect(x: cx + 2.5, y: cy + 0.5, width: 6, height: 6)
+            
+            // Head
+            let headRect = NSRect(x: cx + 1, y: cy + 1, width: 6, height: 6)
             NSBezierPath(ovalIn: headRect).fill()
-
-            // Duck beak (triangle pointing right)
-            let beak = NSBezierPath()
-            beak.move(to: NSPoint(x: cx + 8.5, y: cy + 3.5))
-            beak.line(to: NSPoint(x: cx + 12, y: cy + 2.8))
-            beak.line(to: NSPoint(x: cx + 8.5, y: cy + 2.2))
-            beak.close()
-            beak.fill()
-
-            // Duck tail (small triangle pointing left-back)
-            let tail = NSBezierPath()
-            tail.move(to: NSPoint(x: cx - 5.5, y: cy + 1))
-            tail.line(to: NSPoint(x: cx - 8, y: cy + 3.5))
-            tail.line(to: NSPoint(x: cx - 5.5, y: cy - 2))
-            tail.close()
-            tail.fill()
-
-            // Eye (white dot)
-            NSColor.white.setFill()
-            let eyeRect = NSRect(x: cx + 6, y: cy + 4.2, width: 1.5, height: 1.5)
-            NSBezierPath(ovalIn: eyeRect).fill()
-
+            
+            // Beak
+            let beakPath = NSBezierPath()
+            beakPath.move(to: NSPoint(x: cx + 6, y: cy + 4))
+            beakPath.line(to: NSPoint(x: cx + 9, y: cy + 4))
+            beakPath.line(to: NSPoint(x: cx + 6.5, y: cy + 2.5))
+            beakPath.close()
+            beakPath.fill()
+            
+            // Tail
+            let tailPath = NSBezierPath()
+            tailPath.move(to: NSPoint(x: cx - 4, y: cy - 1))
+            tailPath.line(to: NSPoint(x: cx - 7, y: cy + 1))
+            tailPath.line(to: NSPoint(x: cx - 4.5, y: cy + 1.5))
+            tailPath.close()
+            tailPath.fill()
+            
+            // Eye (cut out)
+            if !active {
+                NSColor.windowBackgroundColor.set()
+                let eyeRect = NSRect(x: cx + 4.2, y: cy + 4, width: 1.2, height: 1.2)
+                NSBezierPath(ovalIn: eyeRect).fill()
+            }
+            
             return true
         }
         image.isTemplate = true
