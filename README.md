@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="logo.svg" width="80" alt="open-wispr logo">
+  <img src="logo.svg" width="80" alt="duck-wispr logo">
 </p>
 
-<h1 align="center">open-wispr</h1>
+<h1 align="center">duck-wispr</h1>
 
 <p align="center">
   <strong><a href="https://tarnovski.com">Made by TARNOVSKI</a></strong><br>
@@ -18,7 +18,7 @@
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/totnormal/open-wispr/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/human37/duck-wispr/main/scripts/install.sh | bash
 ```
 
 This is the only supported install method.
@@ -26,11 +26,11 @@ This is the only supported install method.
 It handles the full guided setup flow on macOS:
 - installs Homebrew if needed
 - installs `whisper-cpp`
-- clones and builds `open-wispr` from the `main` branch
-- bundles and installs `/Applications/OpenWispr.app`
+- clones and builds `duck-wispr` from the `main` branch
+- bundles and installs `/Applications/DuckWispr.app`
 - downloads the multilingual `small` model (`ggml-small.bin`)
-- creates `~/.config/open-wispr/config.json` if it does not already exist
-- installs auto-start via `~/Library/LaunchAgents/com.openwispr.dictation.plist`
+- creates `~/.config/duck-wispr/config.json` if it does not already exist
+- installs auto-start via `~/Library/LaunchAgents/com.duckwispr.dictation.plist`
 - reloads the launch agent cleanly on re-install
 - guides you through Microphone and Accessibility permissions (best-effort if already granted)
 
@@ -38,15 +38,21 @@ After install: a waveform icon appears in your menu bar. The default hotkey is t
 
 ### DMG (drag to /Applications)
 
-Build it yourself:
+### Download DMG
+
+Get the latest DMG for easy drag-and-drop installation:
+
+**[Download DuckWispr-v0.1.4.dmg](https://github.com/totnormal/duck-wispr/releases/download/DuckWispr-v0.1.4/DuckWispr-v0.1.4.dmg)**
+
+### Build it yourself:
 
 ```bash
-git clone https://github.com/totnormal/open-wispr.git
-cd open-wispr
+git clone https://github.com/human37/duck-wispr.git
+cd duck-wispr
 bash scripts/build-dmg.sh
 ```
 
-Open the DMG, drag OpenWispr to /Applications, and launch it. The app handles model download, config, and auto-start on first launch. Just grant Microphone and Accessibility when prompted.
+Open the DMG, drag DuckWispr to /Applications, and launch it. The app handles model download, config, and auto-start on first launch. Just grant Microphone and Accessibility when prompted.
 
 The DMG is **fully self-contained** — no Homebrew or manual dependencies needed. whisper-cpp is bundled inside the app.
 
@@ -54,7 +60,7 @@ The DMG is **fully self-contained** — no Homebrew or manual dependencies neede
 
 ## Configuration
 
-Edit `~/.config/open-wispr/config.json`:
+Edit `~/.config/duck-wispr/config.json`:
 
 ```json
 {
@@ -113,7 +119,7 @@ Click the menu bar icon to access **Copy Last Dictation** — recovers your most
 
 ## Privacy
 
-open-wispr is completely local. Audio is recorded to a temp file, transcribed by whisper.cpp on your CPU/GPU, and the temp file is deleted. No network requests are made except to download the Whisper model on first run. Optionally, you can configure open-wispr to store a number of past recordings locally via the `maxRecordings` setting. Those recordings stay private and on your machine, and we default to not storing anything.
+duck-wispr is completely local. Audio is recorded to a temp file, transcribed by whisper.cpp on your CPU/GPU, and the temp file is deleted. No network requests are made except to download the Whisper model on first run. Optionally, you can configure duck-wispr to store a number of past recordings locally via the `maxRecordings` setting. Those recordings stay private and on your machine, and we default to not storing anything.
 
 ## Features
 
@@ -141,12 +147,12 @@ Audio is recorded to a temp file, transcribed locally, and immediately deleted. 
 ## Build from source
 
 ```bash
-git clone -b main https://github.com/totnormal/open-wispr.git
-cd open-wispr
+git clone -b main https://github.com/human37/duck-wispr.git
+cd duck-wispr
 brew install whisper-cpp
 swift build -c release
-bash scripts/bundle-app.sh .build/release/open-wispr OpenWispr.app dev
-open OpenWispr.app
+bash scripts/bundle-app.sh .build/release/duck-wispr DuckWispr.app dev
+open DuckWispr.app
 ```
 
 ## License
