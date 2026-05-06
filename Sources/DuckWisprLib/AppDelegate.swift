@@ -525,7 +525,14 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
             do {
-                let raw = try self.transcriber.transcribe(audioURL: audioURL, prompt: Transcriber.sanitizedPrompt(self.lastTranscription))
+                // Apply same prompt cooldown as main transcription path
+                let prompt: String? = {
+                    if let ts = self.lastTranscriptionTimestamp, Date().timeIntervalSince(ts) < 30 {
+                        return self.lastTranscription
+                    }
+                    return nil
+                }()
+                let raw = try self.transcriber.transcribe(audioURL: audioURL, prompt: Transcriber.sanitizedPrompt(prompt))
                 let mode = self.config.proofreadingMode ?? .standard
                 let text = mode == .standard
                     ? TextPostProcessor.process(raw, language: self.config.language)
@@ -533,6 +540,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
                 DispatchQueue.main.async {
                     if !text.isEmpty {
                         self.lastTranscription = text
+                        self.lastTranscriptionTimestamp = Date()
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(text, forType: .string)
                         self.statusBar.state = .copiedToClipboard
@@ -543,6 +551,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
                         }
                     } else {
                         self.lastTranscription = nil
+                        self.lastTranscriptionTimestamp = nil
                         self.statusBar.state = .idle
                     }
                 }
