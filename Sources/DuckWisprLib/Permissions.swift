@@ -21,18 +21,35 @@ struct Permissions {
         }
     }
 
+    /// Opens the macOS accessibility permission dialog using the native API.
+    /// This is more reliable than manually opening System Settings,
+    /// especially on macOS Sequoia where AXIsProcessTrusted() caching
+    /// can cause the poll loop to miss grants.
     static func promptAccessibility() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-        AXIsProcessTrustedWithOptions(options)
+        _ = AXIsProcessTrustedWithOptions(options)
     }
 
-    static func resetAccessibility() {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
-        process.arguments = ["reset", "Accessibility", "com.human37.duck-wispr"]
-        try? process.run()
-        process.waitUntilExit()
+    // MARK: - Timer-based accessibility polling
+
+    /// Polls AXIsProcessTrusted() on the main thread every second.
+    /// Calls `onGranted` once when permission is detected, then stops.
+    /// Returns the timer so the caller can invalidate it if needed.
+    @discardableResult
+    static func startAccessibilityPolling(onGranted: @escaping () -> Void) -> Timer {
+        let timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            if AXIsProcessTrusted() {
+                timer.invalidate()
+                print("Accessibility: granted (detected by poll)")
+                onGranted()
+            }
+        }
+        // Fire immediately to check current state
+        timer.fire()
+        return timer
     }
+
+    // MARK: - Version & path tracking
 
     static func didUpgrade() -> Bool {
         let configDir = FileManager.default.homeDirectoryForCurrentUser
@@ -51,9 +68,9 @@ struct Permissions {
         return true
     }
 
-    /// Returns true if the binary path changed (e.g. moved from ~/Applications to /Applications),
-    /// meaning Accessibility permissions must be reset because macOS ties them to the binary path.
-    static func requiresAccessibilityReset() -> Bool {
+    /// Records the current binary path. Returns true if it changed since last launch.
+    /// Used to decide whether to show a heads-up about needing to re-grant accessibility.
+    static func didBinaryPathChange() -> Bool {
         let configDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".config/duck-wispr")
         let pathFile = configDir.appendingPathComponent(".last-binary-path")
@@ -61,9 +78,10 @@ struct Permissions {
         let previousPath = try? String(contentsOf: pathFile, encoding: .utf8)
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        let needsReset = previousPath != nil && previousPath != currentPath
+        let changed = previousPath != nil && previousPath != currentPath
+        try? FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
         try? currentPath.write(to: pathFile, atomically: true, encoding: .utf8)
-        return needsReset
+        return changed
     }
 
     static func openAccessibilitySettings() {

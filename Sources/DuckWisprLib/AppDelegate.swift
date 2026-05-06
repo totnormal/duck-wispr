@@ -10,7 +10,9 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     var isPressed = false
     var isReady = false
     public var lastTranscription: String?
+    private var lastTranscriptionTimestamp: Date?
     var mediaManager: MediaManager?
+    private var accessibilityTimer: Timer?
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
         statusBar = StatusBarController()
@@ -78,60 +80,92 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             print("Verifier: \(issue.message)")
         }
 
-        // Only reset accessibility on upgrade if the binary path changed
-        // (e.g., moving from ~/Applications to /Applications)
+        // Track version and binary path for diagnostics (no tccutil reset)
+        // Previous code called tccutil reset on path change, which removed permissions
+        // the user had just granted via System Settings — causing the stuck lock icon.
+        // macOS already invalidates TCC entries when the code signature changes on reinstall.
         if Permissions.didUpgrade() {
-            if Permissions.requiresAccessibilityReset() {
-                print("Accessibility: path change detected, resetting permissions...")
-                Permissions.resetAccessibility()
-                Thread.sleep(forTimeInterval: 1)
+            let pathChanged = Permissions.didBinaryPathChange()
+            if pathChanged {
+                print("Accessibility: binary path changed on upgrade — permissions may need re-granting")
             } else {
-                print("Accessibility: upgrade detected but path unchanged, keeping permissions")
-            }
-        }
-
-        if !AXIsProcessTrusted() {
-            DispatchQueue.main.async {
-                self.statusBar.state = .waitingForPermission
-                self.statusBar.buildMenu()
+                print("Accessibility: upgrade detected, path unchanged")
             }
         }
 
         Permissions.ensureMicrophone()
 
-        if !AXIsProcessTrusted() {
-            print("Accessibility: not granted")
-
-            // Show a clear dialog explaining what the user needs to do
-            DispatchQueue.main.async {
-                let alert = NSAlert()
-                alert.messageText = "Accessibility Access Required"
-                alert.informativeText = "DuckWispr needs Accessibility access to paste transcribed text into other apps.\n\nIn the System Settings window that opens:\n1. Find DuckWispr in the list\n2. Toggle the switch ON\n3. You may need to unlock the padlock first"
-                alert.alertStyle = .informational
-                alert.addButton(withTitle: "Open Settings")
-                alert.runModal()
-                Permissions.openAccessibilitySettings()
-            }
-
-            print("Waiting for Accessibility permission...")
-            let deadline = Date().addingTimeInterval(60)
-            while !AXIsProcessTrusted() {
-                if Date() > deadline {
-                    let msg = "Accessibility permission not granted within 60s. Grant it in System Settings → Privacy & Security → Accessibility, then restart DuckWispr."
-                    print("Error: \(msg)")
-                    DispatchQueue.main.async {
-                        self.statusBar.state = .error(msg)
-                        self.statusBar.buildMenu()
-                    }
-                    return
-                }
-                Thread.sleep(forTimeInterval: 0.5)
-            }
+        if AXIsProcessTrusted() {
             print("Accessibility: granted")
+            finishSetup()
         } else {
-            print("Accessibility: granted")
-        }
+            print("Accessibility: not granted — entering non-blocking wait")
+            DispatchQueue.main.async {
+                self.statusBar.state = .waitingForPermission
+                self.statusBar.recheckPermissionHandler = { [weak self] in
+                    self?.triggerAccessibilityRecheck()
+                }
+                self.statusBar.buildMenu()
 
+                // Show the native macOS accessibility prompt
+                // (more reliable than manually opening System Settings on Sequoia)
+                Permissions.promptAccessibility()
+
+                // Also open System Settings as a fallback for users who miss the system dialog
+                Permissions.openAccessibilitySettings()
+
+                // Start timer-based polling (main thread, 1s interval)
+                // This replaces the old blocking busy-wait that ran on a background thread
+                // and could miss grants due to TCC cache staleness.
+                self.accessibilityTimer = Permissions.startAccessibilityPolling { [weak self] in
+                    self?.onAccessibilityGranted()
+                }
+            }
+        }
+    }
+
+    // MARK: - Accessibility permission recovery
+
+    /// Called by the accessibility poll timer when permission is detected.
+    private func onAccessibilityGranted() {
+        accessibilityTimer?.invalidate()
+        accessibilityTimer = nil
+        statusBar.recheckPermissionHandler = nil
+        finishSetup()
+    }
+
+    /// Called when user clicks "Recheck Permission" in the menu.
+    private func triggerAccessibilityRecheck() {
+        if AXIsProcessTrusted() {
+            onAccessibilityGranted()
+        } else {
+            // Re-trigger the native prompt in case the user missed it
+            Permissions.promptAccessibility()
+        }
+    }
+
+    /// Continues setup after accessibility is granted.
+    /// Extracted from setupInner() so it can be called either immediately
+    /// (if already trusted) or deferred (after permission grant).
+    private func finishSetup() {
+        // This runs on main thread (called from timer callback or recheck)
+        // Switch to background for the remaining heavy setup
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            do {
+                try self.finishSetupInner()
+            } catch {
+                let msg = error.localizedDescription
+                print("Setup error after permission grant: \(msg)")
+                DispatchQueue.main.async {
+                    self.statusBar.state = .error(msg)
+                    self.statusBar.buildMenu()
+                }
+            }
+        }
+    }
+
+    private func finishSetupInner() throws {
         if !Transcriber.modelExists(modelSize: config.modelSize) {
             DispatchQueue.main.async {
                 self.statusBar.state = .downloading
@@ -165,11 +199,6 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         Transcriber.deleteOtherModels(keeping: config.modelSize)
-
-        // NOTE: recorder is NOT prewarmed here.
-        // The audio engine is started on first key press (about 600ms delay).
-        // This prevents the orange mic indicator from appearing at all times,
-        // which feels like the app is "spying" when it's just idle.
 
         DispatchQueue.main.async { [weak self] in
             self?.startListening()
@@ -430,7 +459,14 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
 
             do {
-                let raw = try self.transcriber.transcribe(audioURL: audioURL, prompt: Transcriber.sanitizedPrompt(self.lastTranscription))
+                // Only use last transcription as prompt if recent (<30s); stale prompts bias the decoder
+                let prompt: String? = {
+                    if let ts = self.lastTranscriptionTimestamp, Date().timeIntervalSince(ts) < 30 {
+                        return self.lastTranscription
+                    }
+                    return nil
+                }()
+                let raw = try self.transcriber.transcribe(audioURL: audioURL, prompt: Transcriber.sanitizedPrompt(prompt))
 #if DEBUG
                 print("whisper raw (\(raw.count) chars): '\(raw)'")
 #endif
@@ -451,9 +487,11 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
                         self.inserter.insert(text: text)
                         self.lastTranscription = text
+                        self.lastTranscriptionTimestamp = Date()
                     } else {
                         print("text empty — nothing to insert")
                         self.lastTranscription = nil
+                        self.lastTranscriptionTimestamp = nil
                     }
                     self.statusBar.state = .idle
                     self.statusBar.buildMenu()
@@ -462,6 +500,8 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
                 if maxRecordings > 0 {
                     RecordingStore.prune(maxCount: maxRecordings)
                 }
+                self.lastTranscription = nil
+                self.lastTranscriptionTimestamp = nil
                 DispatchQueue.main.async {
                     print("Error: \(error.localizedDescription)")
                     self.statusBar.state = .error(error.localizedDescription)

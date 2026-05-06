@@ -19,6 +19,7 @@ class StatusBarController: NSObject {
 
     var reprocessHandler: ((URL) -> Void)?
     var onConfigChange: ((Config) -> Void)?
+    var recheckPermissionHandler: (() -> Void)?
 
     enum State {
         case idle
@@ -111,14 +112,22 @@ class StatusBarController: NSObject {
             }
         }
         if case .waitingForPermission = state {
-            let target = MenuItemTarget {
+            let openTarget = MenuItemTarget {
                 Permissions.openAccessibilitySettings()
             }
-            menuItemTargets.append(target)
-            let stateItem = NSMenuItem(title: "Grant Accessibility Permission...", action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
-            stateItem.target = target
+            menuItemTargets.append(openTarget)
+            let stateItem = NSMenuItem(title: "Open Accessibility Settings...", action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
+            stateItem.target = openTarget
             menu.addItem(stateItem)
             stateMenuItem = stateItem
+
+            let recheckTarget = MenuItemTarget { [weak self] in
+                self?.recheckPermissionHandler?()
+            }
+            menuItemTargets.append(recheckTarget)
+            let recheckItem = NSMenuItem(title: "Recheck Permission", action: #selector(MenuItemTarget.invoke), keyEquivalent: "r")
+            recheckItem.target = recheckTarget
+            menu.addItem(recheckItem)
         } else {
             let stateItem = NSMenuItem(title: "\(stateLabel) (hotkey: \(hotkeyDesc))", action: nil, keyEquivalent: "")
             stateItem.isEnabled = false
