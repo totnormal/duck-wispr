@@ -135,12 +135,27 @@ class StatusBarController: NSObject {
 
         let favorites = Set(config.favoriteLanguages ?? [])
 
-        for (index, lang) in Config.supportedLanguages.enumerated() {
+        // Split into Auto-Detect, favorites (alpha), and rest (alpha)
+        let autoLang = Config.supportedLanguages.first { $0.code == "auto" }
+        let nonAutoLangs = Config.supportedLanguages.filter { $0.code != "auto" }
+        let favLangs = nonAutoLangs.filter { favorites.contains($0.code) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let otherLangs = nonAutoLangs.filter { !favorites.contains($0.code) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let sortedLangs: [LanguageOption] = {
+            var result: [LanguageOption] = []
+            if let auto = autoLang { result.append(auto) }
+            result.append(contentsOf: favLangs)
+            result.append(contentsOf: otherLangs)
+            return result
+        }()
+
+        for (index, lang) in sortedLangs.enumerated() {
             if index == 1 {
                 langSubmenu.addItem(NSMenuItem.separator())
             }
-            let isFavorite = favorites.contains(lang.code) && lang.code != "auto"
-            let title = isFavorite ? "★ \(lang.name)" : lang.name
+            let isAuto = lang.code == "auto"
+            let isFavorite = favorites.contains(lang.code) && !isAuto
+            let star = isAuto ? "" : (isFavorite ? "★ " : "☆ ")
+            let title = "\(star)\(lang.name)"
 
             let selectTarget = MenuItemTarget { [weak self] in
                 let isToggle = NSEvent.modifierFlags.contains(.option) && lang.code != "auto"
@@ -295,10 +310,10 @@ class StatusBarController: NSObject {
             self?.onConfigChange?(cfg)
         }
         menuItemTargets.append(toggleTarget)
-        let toggleItem = NSMenuItem(title: "Toggle Mode", action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
-        toggleItem.target = toggleTarget
-        toggleItem.state = (config.toggleMode?.value ?? false) ? .on : .off
-        menu.addItem(toggleItem)
+        let holdItem = NSMenuItem(title: "Hold to Talk", action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
+        holdItem.target = toggleTarget
+        holdItem.state = !(config.toggleMode?.value ?? false) ? .on : .off
+        menu.addItem(holdItem)
 
         // Media pause submenu
         let mediaItem = NSMenuItem(title: "Pause Media", action: nil, keyEquivalent: "")
