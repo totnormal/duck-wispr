@@ -19,7 +19,12 @@ class TextInserter {
 
         simulatePaste()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        // Restore clipboard faster (0.05s), with 0.5s safety net against crash
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            self.restorePasteboard(pasteboard, items: savedItems)
+        }
+        // Belt-and-suspenders: ensure restoration even if the first timer is dropped
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.restorePasteboard(pasteboard, items: savedItems)
         }
     }

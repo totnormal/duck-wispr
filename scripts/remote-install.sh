@@ -1,11 +1,11 @@
 #!/bin/bash
 # One-liner: clone the repo and install everything
 # Usage on the target Mac:
-#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/totnormal/open-wispr/feat/proofreading-pipeline/scripts/remote-install.sh)"
+#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/human37/duck-wispr/feat/proofreading-pipeline/scripts/remote-install.sh)"
 set -euo pipefail
 
 echo "════════════════════════════════════════════"
-echo "  open-wispr installer"
+echo "  duck-wispr installer"
 echo "  (proofreading pipeline edition)"
 echo "════════════════════════════════════════════"
 echo ""
@@ -22,12 +22,12 @@ if ! command -v brew &>/dev/null; then
 fi
 
 # ── Clone repo ─────────────────────────────────────────────────
-REPO_DIR="$HOME/open-wispr-install"
+REPO_DIR="$HOME/duck-wispr-install"
 echo ""
-echo "Cloning open-wispr..."
+echo "Cloning duck-wispr..."
 rm -rf "$REPO_DIR"
 git clone --branch feat/proofreading-pipeline \
-    https://github.com/totnormal/open-wispr.git "$REPO_DIR"
+    https://github.com/human37/duck-wispr.git "$REPO_DIR"
 
 cd "$REPO_DIR"
 
@@ -38,13 +38,13 @@ brew install whisper-cpp 2>/dev/null || echo "  (already installed)"
 
 # ── Build app ──────────────────────────────────────────────────
 echo ""
-echo "Building open-wispr..."
+echo "Building duck-wispr..."
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 swift build -c release 2>&1 | tail -3
 
 echo ""
 echo "Bundling .app..."
-bash scripts/bundle-app.sh .build/release/open-wispr OpenWispr.app dev
+bash scripts/bundle-app.sh .build/release/duck-wispr DuckWispr.app dev
 
 # ── Run portable install ───────────────────────────────────────
 echo ""
@@ -55,7 +55,7 @@ echo ""
 echo "════════════════════════════════════════════"
 echo "  Installation complete!"
 echo ""
-echo "  The app lives at: ~/Applications/OpenWispr.app"
+echo "  The app lives at: ~/Applications/DuckWispr.app"
 echo "  It auto-starts on login via launch agent"
 echo "  Look for the waveform icon (〰️) in your menu bar"
 echo "════════════════════════════════════════════"

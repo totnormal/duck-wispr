@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="human37/open-wispr"
+REPO="human37/duck-wispr"
 W=60
 
 bar() {
@@ -138,7 +138,7 @@ fi
 declare -a pp_paths=() pp_counts=()
 pp_max=0
 while IFS=' ' read -r path count; do
-  short="${path#/human37/open-wispr}"
+  short="${path#/human37/duck-wispr}"
   [ -z "$short" ] && short="/"
   pp_paths+=("$short")
   pp_counts+=("$count")

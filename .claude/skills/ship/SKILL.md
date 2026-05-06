@@ -1,11 +1,11 @@
 ---
 name: ship
-description: Use when ready to merge a PR and deploy a new version of open-wispr - handles version bump, merge, and deploy
+description: Use when ready to merge a PR and deploy a new version of duck-wispr - handles version bump, merge, and deploy
 ---
 
 # Ship
 
-Merge a PR and deploy a new release of open-wispr.
+Merge a PR and deploy a new release of duck-wispr.
 
 ## Prerequisites
 
@@ -24,7 +24,7 @@ All checks must pass. If any are failing, stop and tell the user.
 
 ### Step 2: Bump minor version if needed
 
-Read `Sources/OpenWisprLib/Version.swift` and parse the current version (`MAJOR.MINOR.PATCH`).
+Read `Sources/DuckWisprLib/Version.swift` and parse the current version (`MAJOR.MINOR.PATCH`).
 
 Increment the minor version by 1 and reset patch to 0 (e.g., `0.25.0` -> `0.26.0`).
 

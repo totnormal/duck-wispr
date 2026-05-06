@@ -1,0 +1,1 @@
+git commit -m "docs: add GitHub DMG download link to README"

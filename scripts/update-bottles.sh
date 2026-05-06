@@ -3,8 +3,8 @@ set -e
 
 VERSION="$1"
 TAG="v${VERSION}"
-TAP_DIR="/tmp/homebrew-open-wispr"
-FORMULA="${TAP_DIR}/open-wispr.rb"
+TAP_DIR="/tmp/homebrew-duck-wispr"
+FORMULA="${TAP_DIR}/duck-wispr.rb"
 
 if [ -z "$VERSION" ]; then
   echo "Usage: update-bottles.sh <version>"
@@ -15,7 +15,7 @@ DL_DIR=$(mktemp -d)
 trap 'rm -rf "${DL_DIR}"' EXIT
 
 echo "==> Downloading bottles from release ${TAG}..."
-gh release download "${TAG}" --pattern "*.bottle.tar.gz" --dir "${DL_DIR}" --repo human37/open-wispr
+gh release download "${TAG}" --pattern "*.bottle.tar.gz" --dir "${DL_DIR}" --repo human37/duck-wispr
 
 BOTTLES_JSON="{"
 FIRST=true
@@ -51,7 +51,7 @@ fi
 echo "==> Updating tap formula with bottle SHAs..."
 
 if [ ! -d "${TAP_DIR}" ]; then
-  git clone git@github.com:human37/homebrew-open-wispr.git "${TAP_DIR}"
+  git clone git@github.com:human37/homebrew-duck-wispr.git "${TAP_DIR}"
 fi
 git -C "${TAP_DIR}" pull --rebase
 
@@ -65,7 +65,7 @@ ruby -e '
   formula.gsub!(/\n  bottle do.*?  end\n/m, "\n")
 
   lines = ["  bottle do"]
-  lines << "    root_url \"https://github.com/human37/open-wispr/releases/download/#{tag}\""
+  lines << "    root_url \"https://github.com/human37/duck-wispr/releases/download/#{tag}\""
   bottles.each do |os_tag, sha|
     lines << "    sha256 cellar: :any, #{os_tag}: \"#{sha}\""
   end
@@ -76,7 +76,7 @@ ruby -e '
   File.write(formula_path, formula)
 ' "$FORMULA" "$TAG" "$BOTTLES_JSON"
 
-git -C "${TAP_DIR}" add open-wispr.rb
+git -C "${TAP_DIR}" add duck-wispr.rb
 git -C "${TAP_DIR}" diff --cached --quiet && echo "Tap already up to date." || \
   git -C "${TAP_DIR}" commit -m "Add bottles for ${TAG}"
 git -C "${TAP_DIR}" push origin main

@@ -6,6 +6,9 @@ public struct Recording {
 }
 
 public class RecordingStore {
+    // NOTE: Recordings are stored as plaintext WAV files on disk.
+    // If maxRecordings > 0, past dictations persist unencrypted.
+    // For sensitive environments, consider on-disk encryption or set maxRecordings to 0.
     public static var recordingsDir = Config.configDir.appendingPathComponent("recordings")
 
     static let filePrefix = "recording-"
@@ -26,7 +29,9 @@ public class RecordingStore {
     }
 
     public static func tempRecordingURL() -> URL {
-        FileManager.default.temporaryDirectory.appendingPathComponent("duck-wispr-recording.wav")
+        let uuid = UUID().uuidString
+        let filename = "duck-wispr-recording-\(uuid).wav"
+        return FileManager.default.temporaryDirectory.appendingPathComponent(filename)
     }
 
     public static func newRecordingURL() -> URL {

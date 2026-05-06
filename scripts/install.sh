@@ -10,23 +10,23 @@ BOLD='\033[1m'
 NC='\033[0m'
 SPINNER_FRAMES=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
 
-REPO_URL="https://github.com/totnormal/open-wispr.git"
-RAW_BASE="https://raw.githubusercontent.com/totnormal/open-wispr/main"
+REPO_URL="https://github.com/human37/duck-wispr.git"
+RAW_BASE="https://raw.githubusercontent.com/human37/duck-wispr/main"
 BREW_INSTALL_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 MODEL_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
-APP_NAME="OpenWispr.app"
+APP_NAME="DuckWispr.app"
 APP_DEST="/Applications/${APP_NAME}"
-APP_BINARY="$APP_DEST/Contents/MacOS/open-wispr"
-LAUNCH_AGENT_LABEL="com.openwispr.dictation"
+APP_BINARY="$APP_DEST/Contents/MacOS/duck-wispr"
+LAUNCH_AGENT_LABEL="com.duckwispr.dictation"
 LAUNCH_AGENT="$HOME/Library/LaunchAgents/${LAUNCH_AGENT_LABEL}.plist"
-CONFIG_DIR="$HOME/.config/open-wispr"
+CONFIG_DIR="$HOME/.config/duck-wispr"
 MODEL_DIR="$CONFIG_DIR/models"
 MODEL_FILE="$MODEL_DIR/ggml-small.bin"
 CONFIG_FILE="$CONFIG_DIR/config.json"
-WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/open-wispr-install.XXXXXX")"
-REPO_DIR="$WORKDIR/open-wispr"
+WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/duck-wispr-install.XXXXXX")"
+REPO_DIR="$WORKDIR/duck-wispr"
 LOG_FILE="$WORKDIR/install.log"
-APP_LOG="$WORKDIR/open-wispr-first-run.log"
+APP_LOG="$WORKDIR/duck-wispr-first-run.log"
 SPIN_PID=""
 INSTALL_FAILED=0
 
@@ -41,7 +41,7 @@ cleanup() {
 trap cleanup EXIT
 
 print_header() {
-    printf "\n${BOLD}open-wispr installer${NC} ${DIM}(main branch)${NC}\n"
+    printf "\n${BOLD}duck-wispr installer${NC} ${DIM}(main branch)${NC}\n"
     printf "${DIM}────────────────────────────────────────────${NC}\n"
 }
 
@@ -195,7 +195,7 @@ ensure_dev_tools() {
 }
 
 clone_repo() {
-    step "Fetching open-wispr source"
+    step "Fetching duck-wispr source"
     run "Cloning repository" git clone --depth 1 --branch main "$REPO_URL" "$REPO_DIR"
 }
 
@@ -203,22 +203,22 @@ build_app() {
     step "Building app"
     cd "$REPO_DIR"
     run "Building Swift release binary" swift build -c release
-    run "Bundling app" bash scripts/bundle-app.sh .build/release/open-wispr "$APP_NAME" main
+    run "Bundling app" bash scripts/bundle-app.sh .build/release/duck-wispr "$APP_NAME" main
 }
 
 stop_running_processes() {
     local pids=""
     pids="$(pgrep -f "${APP_BINARY} start" 2>/dev/null || true)"
     if [[ -z "$pids" ]]; then
-        ok "No running open-wispr process to stop"
+        ok "No running duck-wispr process to stop"
         return 0
     fi
 
-    info "Stopping running open-wispr process(es): $(echo "$pids" | tr '\n' ' ')"
-    run "Stopping existing open-wispr process" pkill -f "${APP_BINARY} start"
+    info "Stopping running duck-wispr process(es): $(echo "$pids" | tr '\n' ' ')"
+    run "Stopping existing duck-wispr process" pkill -f "${APP_BINARY} start"
     sleep 1
     if pgrep -f "${APP_BINARY} start" >/dev/null 2>&1; then
-        run "Force stopping lingering open-wispr process" pkill -9 -f "${APP_BINARY} start"
+        run "Force stopping lingering duck-wispr process" pkill -9 -f "${APP_BINARY} start"
     fi
 }
 
@@ -235,6 +235,10 @@ unload_launch_agent() {
 
 # ── Privileged operations (OSA auth dialog) ───────────────────────
 
+# NOTE: run_privileged uses osascript with administrator privileges.
+# All arguments are script-generated (not user input), and shell-quoted
+# via printf '%q'. No shell injection risk, but the pattern is fragile —
+# review any changes to the callers carefully.
 run_privileged() {
     local description="$1"
     shift
@@ -353,9 +357,9 @@ install_launch_agent() {
     <key>ProcessType</key>
     <string>Interactive</string>
     <key>StandardOutPath</key>
-    <string>${HOME}/Library/Logs/open-wispr.log</string>
+    <string>${HOME}/Library/Logs/duck-wispr.log</string>
     <key>StandardErrorPath</key>
-    <string>${HOME}/Library/Logs/open-wispr.log</string>
+    <string>${HOME}/Library/Logs/duck-wispr.log</string>
 </dict>
 </plist>
 EOF
@@ -374,7 +378,7 @@ EOF
 start_app_and_prompt_permissions() {
     step "Checking permissions"
     : > "$APP_LOG"
-    info "OpenWispr is launched via the login agent; no duplicate direct start is performed."
+    info "DuckWispr is launched via the login agent; no duplicate direct start is performed."
     info "Permission checks are best-effort. If access is already granted, you may not see new prompts."
 
     if wait_for_log_pattern "Microphone:" "$APP_LOG" 45 "Watching for microphone status..."; then
@@ -393,18 +397,18 @@ start_app_and_prompt_permissions() {
     fi
 
     open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" >>"$LOG_FILE" 2>&1 || true
-    info "System Settings was opened for ${BOLD}Accessibility${NC}. Enable ${BOLD}OpenWispr${NC} if it is not already allowed."
+    info "System Settings was opened for ${BOLD}Accessibility${NC}. Enable ${BOLD}DuckWispr${NC} if it is not already allowed."
     if wait_for_log_pattern "Accessibility: granted" "$APP_LOG" 300 "Watching for Accessibility status..."; then
         ok "Accessibility access already granted or confirmed"
     else
-        warn "Accessibility was not confirmed automatically — if OpenWispr is already enabled, you can ignore this message"
+        warn "Accessibility was not confirmed automatically — if DuckWispr is already enabled, you can ignore this message"
         info "You can manage it in ${BOLD}System Settings → Privacy & Security → Accessibility${NC}"
     fi
 }
 
 print_success() {
     printf "\n${DIM}────────────────────────────────────────────${NC}\n"
-    printf "${GREEN}${BOLD}OpenWispr is installed.${NC}\n\n"
+    printf "${GREEN}${BOLD}DuckWispr is installed.${NC}\n\n"
     printf "  App:        ${BOLD}%s${NC}\n" "$APP_DEST"
     printf "  Config:     ${BOLD}%s${NC}\n" "$CONFIG_FILE"
     printf "  Model:      ${BOLD}%s${NC}\n" "$MODEL_FILE"
@@ -414,7 +418,8 @@ print_success() {
     printf "  Model size: ${BOLD}small${NC}\n"
     printf "  Proofread:  ${BOLD}standard${NC}\n\n"
     printf "  One-line install command for users:\n"
-    printf "  ${BOLD}curl -fsSL %s/scripts/install.sh | bash${NC}\n\n" "$RAW_BASE"
+    printf "  ${BOLD}curl -fsSL %s/scripts/install.sh | bash${NC}\n" "$RAW_BASE"
+    printf "  ${DIM}Verify: curl -fsSL %s/scripts/install.sh | shasum -a 256${NC}\n\n" "$RAW_BASE"
 }
 
 main() {

@@ -409,24 +409,32 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
 
+#if DEBUG
             // Debug: check audio file size
             let fileSize = (try? FileManager.default.attributesOfItem(atPath: audioURL.path)[.size] as? Int64) ?? 0
             print("audio file: \(audioURL.path) (\(fileSize) bytes)")
+#endif
 
             do {
                 let raw = try self.transcriber.transcribe(audioURL: audioURL, prompt: Transcriber.sanitizedPrompt(self.lastTranscription))
+#if DEBUG
                 print("whisper raw (\(raw.count) chars): '\(raw)'")
+#endif
                 let mode = self.config.proofreadingMode ?? .standard
                 let text = mode == .standard
                     ? TextPostProcessor.process(raw, language: self.config.language)
                     : raw
+#if DEBUG
                 print("post-processed (\(text.count) chars): '\(text)'")
+#endif
                 if maxRecordings > 0 {
                     RecordingStore.prune(maxCount: maxRecordings)
                 }
                 DispatchQueue.main.async {
                     if !text.isEmpty {
+#if DEBUG
                         print("inserting text: '\(text)'")
+#endif
                         self.inserter.insert(text: text)
                         self.lastTranscription = text
                     } else {

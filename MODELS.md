@@ -1,6 +1,6 @@
 # Models
 
-Complete reference for the Whisper models open-wispr supports. For a quick overview see the [README](README.md#models).
+Complete reference for the Whisper models duck-wispr supports. For a quick overview see the [README](README.md#models).
 
 ## All supported models
 
@@ -34,8 +34,8 @@ For everyday dictation the difference between a quantized model and its full cou
 
 Models ending in `.en` (including the `.en-q…` quantized variants) are English-only. There is no English-only large model upstream — OpenAI never released one, so pick `large-v3-turbo` for the fastest large-tier multilingual option.
 
-To use another language, switch to the equivalent multilingual model (e.g. `base.en` → `base`, or `large-v3-turbo` for the fastest large-tier option) and set the `language` field in `~/.config/open-wispr/config.json` to your [ISO 639-1 code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes). Multilingual models are slightly less accurate for English but support 99 languages.
+To use another language, switch to the equivalent multilingual model (e.g. `base.en` → `base`, or `large-v3-turbo` for the fastest large-tier option) and set the `language` field in `~/.config/duck-wispr/config.json` to your [ISO 639-1 code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes). Multilingual models are slightly less accurate for English but support 99 languages.
 
 ## Where these come from
 
-Models are downloaded on demand from [`ggerganov/whisper.cpp`](https://huggingface.co/ggerganov/whisper.cpp/tree/main) on HuggingFace and cached in `~/.config/open-wispr/models/`.
+Models are downloaded on demand from [`ggerganov/whisper.cpp`](https://huggingface.co/ggerganov/whisper.cpp/tree/main) on HuggingFace and cached in `~/.config/duck-wispr/models/`.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Portable install script for open-wispr (proofreading-pipeline edition)
+# Portable install script for duck-wispr (proofreading-pipeline edition)
 # Works without Homebrew tap — installs straight from this directory
 set -euo pipefail
 
@@ -8,7 +8,7 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}open-wispr portable installer${NC}"
+echo -e "${BLUE}duck-wispr portable installer${NC}"
 echo ""
 
 # ── Check OS ──────────────────────────────────────────────────────
@@ -56,25 +56,25 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-APP_SRC="$REPO_DIR/OpenWispr.app"
+APP_SRC="$REPO_DIR/DuckWispr.app"
 if [ ! -d "$APP_SRC" ]; then
     echo ""
     echo "Building app bundle..."
     cd "$REPO_DIR"
     swift build -c release 2>&1 | tail -1
-    bash scripts/bundle-app.sh .build/release/open-wispr OpenWispr.app dev
-    APP_SRC="$REPO_DIR/OpenWispr.app"
+    bash scripts/bundle-app.sh .build/release/duck-wispr DuckWispr.app dev
+    APP_SRC="$REPO_DIR/DuckWispr.app"
 fi
 
 echo ""
 echo "Installing app to ~/Applications..."
-rm -rf ~/Applications/OpenWispr.app
-cp -R "$APP_SRC" ~/Applications/OpenWispr.app
+rm -rf ~/Applications/DuckWispr.app
+cp -R "$APP_SRC" ~/Applications/DuckWispr.app
 echo -e "${GREEN}✓${NC} App installed"
 
 # ── Download model ────────────────────────────────────────────────
 MODEL_SIZE="${1:-base.en}"
-MODEL_DIR="$HOME/.config/open-wispr/models"
+MODEL_DIR="$HOME/.config/duck-wispr/models"
 MODEL_FILE="$MODEL_DIR/ggml-$MODEL_SIZE.bin"
 
 if [ -f "$MODEL_FILE" ]; then
@@ -89,7 +89,7 @@ else
 fi
 
 # ── Write config ──────────────────────────────────────────────────
-CONFIG_DIR="$HOME/.config/open-wispr"
+CONFIG_DIR="$HOME/.config/duck-wispr"
 mkdir -p "$CONFIG_DIR"
 
 if [ ! -f "$CONFIG_DIR/config.json" ]; then
@@ -108,17 +108,17 @@ CONFEOF
 fi
 
 # ── Install launch agent (auto-start on login) ────────────────────
-LAUNCH_AGENT="$HOME/Library/LaunchAgents/com.openwispr.dictation.plist"
+LAUNCH_AGENT="$HOME/Library/LaunchAgents/com.duckwispr.dictation.plist"
 cat > "$LAUNCH_AGENT" << LAEOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.openwispr.dictation</string>
+    <string>com.duckwispr.dictation</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$HOME/Applications/OpenWispr.app/Contents/MacOS/open-wispr</string>
+        <string>$HOME/Applications/DuckWispr.app/Contents/MacOS/duck-wispr</string>
         <string>start</string>
     </array>
     <key>RunAtLoad</key>
@@ -147,13 +147,13 @@ echo "The app will open the Accessibility pane on first launch."
 
 # ── Start ─────────────────────────────────────────────────────────
 echo ""
-echo "Starting open-wispr..."
-~/Applications/OpenWispr.app/Contents/MacOS/open-wispr start &
+echo "Starting duck-wispr..."
+~/Applications/DuckWispr.app/Contents/MacOS/duck-wispr start &
 sleep 2
 echo ""
-echo -e "${GREEN}open-wispr is running!${NC}"
+echo -e "${GREEN}duck-wispr is running!${NC}"
 echo ""
 echo "  Hotkey: Globe key (🌐, fn) — hold to talk, release to dictate"
 echo "  Menu bar: Look for the waveform icon"
-echo "  Config: ~/.config/open-wispr/config.json"
+echo "  Config: ~/.config/duck-wispr/config.json"
 echo "  Proofreading: standard mode active (filler removal, contraction fix, capitalization)"
