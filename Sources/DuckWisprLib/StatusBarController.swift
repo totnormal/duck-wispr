@@ -6,7 +6,7 @@ class MenuItemTarget: NSObject {
     @objc func invoke() { handler() }
 }
 
-class StatusBarController: NSObject {
+class StatusBarController: NSObject, NSMenuDelegate {
     private var statusItem: NSStatusItem
     private var animationTimer: Timer?
     private var animationFrame = 0
@@ -16,6 +16,8 @@ class StatusBarController: NSObject {
     private var copiedFeedback = false
     private var menuItemTargets: [MenuItemTarget] = []
     private var stateMenuItem: NSMenuItem?
+    private var langSubmenu: NSMenu?
+    private var optionMenuToggle = false
 
     var reprocessHandler: ((URL) -> Void)?
     var onConfigChange: ((Config) -> Void)?
@@ -58,6 +60,10 @@ class StatusBarController: NSObject {
             self?.copiedFeedback = false
             self?.buildMenu()
         }
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        optionMenuToggle = (menu === langSubmenu) && NSEvent.modifierFlags.contains(.option)
     }
 
     func updateDownloadProgress(_ text: String?, percent: Double = 0) {
@@ -132,6 +138,8 @@ class StatusBarController: NSObject {
         let langName = Config.supportedLanguages.first(where: { $0.code == currentLang })?.name ?? currentLang
         let langItem = NSMenuItem(title: "Language: \(langName)", action: nil, keyEquivalent: "")
         let langSubmenu = NSMenu()
+        self.langSubmenu = langSubmenu
+        langSubmenu.delegate = self
 
         let favorites = Set(config.favoriteLanguages ?? [])
 
@@ -143,7 +151,20 @@ class StatusBarController: NSObject {
             let title = isFavorite ? "★ \(lang.name)" : lang.name
 
             let selectTarget = MenuItemTarget { [weak self] in
+                let isToggle = self?.optionMenuToggle == true && lang.code != "auto"
                 var cfg = Config.load()
+                if isToggle {
+                    var favs = cfg.favoriteLanguages ?? []
+                    if let idx = favs.firstIndex(of: lang.code) {
+                        favs.remove(at: idx)
+                    } else {
+                        favs.append(lang.code)
+                    }
+                    cfg.favoriteLanguages = favs.isEmpty ? nil : favs
+                    try? cfg.save()
+                    self?.buildMenu()
+                    return
+                }
                 cfg.language = lang.code
                 if lang.code != "en" && cfg.modelSize.hasSuffix(".en") {
                     let multilingual = String(cfg.modelSize.dropLast(3))
@@ -167,28 +188,6 @@ class StatusBarController: NSObject {
             }
             langSubmenu.addItem(item)
 
-            // Option-click alternate: toggle favorite (macOS standard alternate menu pattern)
-            if lang.code != "auto" {
-                let starTitle = isFavorite ? "☆ Remove from Favorites" : "★ Add to Favorites"
-                let starTarget = MenuItemTarget { [weak self] in
-                    var cfg = Config.load()
-                    var favs = cfg.favoriteLanguages ?? []
-                    if let idx = favs.firstIndex(of: lang.code) {
-                        favs.remove(at: idx)
-                    } else {
-                        favs.append(lang.code)
-                    }
-                    cfg.favoriteLanguages = favs.isEmpty ? nil : favs
-                    try? cfg.save()
-                    self?.buildMenu()
-                }
-                self.menuItemTargets.append(starTarget)
-                let starItem = NSMenuItem(title: starTitle, action: #selector(MenuItemTarget.invoke), keyEquivalent: "")
-                starItem.target = starTarget
-                starItem.isAlternate = true
-                starItem.keyEquivalentModifierMask = .option
-                langSubmenu.addItem(starItem)
-            }
         }
 
         langItem.submenu = langSubmenu
