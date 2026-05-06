@@ -42,7 +42,7 @@ After install: a waveform icon appears in your menu bar. The default hotkey is t
 
 Get the latest DMG for easy drag-and-drop installation:
 
-**[Download DuckWispr-v0.1.5.dmg](https://github.com/totnormal/duck-wispr/releases/download/DuckWispr-v0.1.5/DuckWispr-v0.1.5.dmg)**
+**[Download DuckWispr-v0.1.5.dmg](https://github.com/totnormal/duck-wispr/releases/download/v0.1.5/DuckWispr-v0.1.5.dmg)**
 
 ### Build it yourself:
 
