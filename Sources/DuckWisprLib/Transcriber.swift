@@ -136,7 +136,7 @@ public class Transcriber {
         if process.terminationStatus != 0 {
             let stderr = String(data: stderrData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             if !stderr.isEmpty { fputs("whisper-cpp: \(stderr)\n", Foundation.stderr) }
-            throw TranscriberError.transcriptionFailed
+            throw TranscriberError.transcriptionFailed(stderr)
         }
 
         return output
@@ -232,7 +232,7 @@ public class Transcriber {
         return findModel(modelSize: modelSize) != nil
     }
 
-    static func findModel(modelSize: String) -> String? {
+    public static func findModel(modelSize: String) -> String? {
         let modelFileName = "ggml-\(modelSize).bin"
 
         let candidates = [
@@ -274,7 +274,7 @@ public class Transcriber {
 enum TranscriberError: LocalizedError {
     case whisperNotFound
     case modelNotFound(String)
-    case transcriptionFailed
+    case transcriptionFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -282,8 +282,11 @@ enum TranscriberError: LocalizedError {
             return "whisper-cpp not found. Install it with: brew install whisper-cpp"
         case .modelNotFound(let size):
             return "Whisper model '\(size)' not found. Download it with: duck-wispr download-model \(size)"
-        case .transcriptionFailed:
-            return "Transcription failed"
+        case .transcriptionFailed(let stderr):
+            if stderr.isEmpty {
+                return "Transcription failed (whisper-cpp exited with error). Try: xattr -cr /Applications/DuckWispr.app"
+            }
+            return "Transcription failed: \(stderr)"
         }
     }
 }

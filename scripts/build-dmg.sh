@@ -16,7 +16,7 @@ REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 APP_NAME="DuckWispr"
 CLI_NAME="duck-wispr"
 BUNDLE_ID="com.human37.duck-wispr"
-VERSION="${1:-0.1.4}"
+VERSION="${1:-0.1.5}"
 DMG_NAME="${APP_NAME}-v${VERSION}"
 BUILD_DIR="$REPO_DIR/.build"
 STAGING_DIR="$BUILD_DIR/dmg-staging"
@@ -182,6 +182,30 @@ ln -s /Applications "$STAGING_DIR/Applications"
 
 # Create a background image with instructions
 mkdir -p "$STAGING_DIR/.background"
+cat > "$STAGING_DIR/INSTALL.txt" << 'TXT'
+=== INSTALLATION ===
+
+1. Drag DuckWispr.app to the Applications folder.
+
+2. FIRST LAUNCH: Right-click (or Control-click) on DuckWispr.app
+   in /Applications and select "Open". This bypasses Gatekeeper.
+
+3. If macOS still blocks the app:
+   -> System Settings -> Privacy & Security -> scroll down
+   -> Click "Open Anyway" next to DuckWispr.
+
+4. Grant Microphone + Accessibility permissions when prompted.
+
+5. If transcription fails with "dylib not found":
+   -> Open Terminal
+   -> Run: xattr -cr /Applications/DuckWispr.app
+   -> Then: open /Applications/DuckWispr.app
+
+6. The app downloads a Whisper model on first launch (~500 MB).
+
+For help: https://github.com/totnormal/duck-wispr
+TXT
+
 cat > "$STAGING_DIR/.background/README.html" << 'HTML'
 <html><body style="font-family:Helvetica;background:#1c1c1e;color:white;text-align:center;padding-top:40px">
 <h1 style="font-size:28pt">🦆 DuckWispr</h1>

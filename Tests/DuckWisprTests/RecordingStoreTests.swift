@@ -34,7 +34,13 @@ final class RecordingStoreTests: XCTestCase {
 
     func testTempRecordingURL() {
         let url = RecordingStore.tempRecordingURL()
-        XCTAssertEqual(url.lastPathComponent, "duck-wispr-recording.wav")
+        let name = url.lastPathComponent
+        XCTAssertTrue(name.hasPrefix("duck-wispr-recording-"), "Expected prefix duck-wispr-recording-, got: \(name)")
+        XCTAssertTrue(name.hasSuffix(".wav"), "Expected .wav extension, got: \(name)")
+        // Verify a UUID is embedded between prefix and extension
+        let middle = name.replacingOccurrences(of: "duck-wispr-recording-", with: "")
+            .replacingOccurrences(of: ".wav", with: "")
+        XCTAssertNotNil(UUID(uuidString: middle), "Expected UUID in temp recording name, got: \(name)")
     }
 
     func testListRecordingsEmpty() {

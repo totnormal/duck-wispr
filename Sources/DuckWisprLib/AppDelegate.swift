@@ -59,9 +59,23 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
             self.statusBar.buildMenu()
         }
 
-        if Transcriber.findWhisperBinary() == nil {
-            print("Error: whisper-cpp not found. Install it with: brew install whisper-cpp")
+        // Verify whisper-cli binary loads correctly and model is ready
+        let verifyResult = Verifier.verify(
+            modelSize: config.modelSize,
+            attemptAutoFix: Verifier.attemptAutoFix
+        )
+        if !verifyResult.isReady {
+            let msgs = verifyResult.issues.filter { $0.isFatal }.map { $0.message }
+            let msg = msgs.joined(separator: "; ")
+            print("Error: \(msg)")
+            DispatchQueue.main.async {
+                self.statusBar.state = .error(msg)
+                self.statusBar.buildMenu()
+            }
             return
+        }
+        for issue in verifyResult.issues where !issue.isFatal && issue.autoFixAttempted {
+            print("Verifier: \(issue.message)")
         }
 
         // Only reset accessibility on upgrade if the binary path changed
