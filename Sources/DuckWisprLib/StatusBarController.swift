@@ -27,6 +27,7 @@ class StatusBarController: NSObject {
         case transcribing
         case downloading
         case waitingForPermission
+        case restartRequired
         case copiedToClipboard
         case error(String)
     }
@@ -107,6 +108,7 @@ class StatusBarController: NSObject {
             case .transcribing: stateLabel = "Transcribing..."
             case .downloading: stateLabel = "Downloading model..."
             case .waitingForPermission: stateLabel = "Waiting for Accessibility permission..."
+            case .restartRequired: stateLabel = "Restart Required"
             case .copiedToClipboard: stateLabel = "Copied to clipboard"
             case .error(let message): stateLabel = "Error: \(message)"
             }
@@ -128,6 +130,19 @@ class StatusBarController: NSObject {
             let recheckItem = NSMenuItem(title: "Recheck Permission", action: #selector(MenuItemTarget.invoke), keyEquivalent: "r")
             recheckItem.target = recheckTarget
             menu.addItem(recheckItem)
+        } else if case .restartRequired = state {
+            let restartTarget = MenuItemTarget {
+                Permissions.relaunchApp()
+            }
+            menuItemTargets.append(restartTarget)
+            let restartItem = NSMenuItem(title: "Restart DuckWispr Now", action: #selector(MenuItemTarget.invoke), keyEquivalent: "r")
+            restartItem.target = restartTarget
+            menu.addItem(restartItem)
+
+            let explainItem = NSMenuItem(title: "Permission granted — restart app to activate", action: nil, keyEquivalent: "")
+            explainItem.isEnabled = false
+            menu.addItem(explainItem)
+            stateMenuItem = explainItem
         } else {
             let stateItem = NSMenuItem(title: "\(stateLabel) (hotkey: \(hotkeyDesc))", action: nil, keyEquivalent: "")
             stateItem.isEnabled = false
@@ -486,6 +501,8 @@ class StatusBarController: NSObject {
             startDownloadingAnimation()
         case .waitingForPermission:
             setIcon(StatusBarController.drawLockIcon())
+        case .restartRequired:
+            setIcon(StatusBarController.drawRestartIcon())
         case .copiedToClipboard:
             setIcon(StatusBarController.drawCheckmarkIcon())
         case .error:
@@ -809,6 +826,44 @@ class StatusBarController: NSObject {
             NSBezierPath(roundedRect: stemRect, xRadius: 0.75, yRadius: 0.75).fill()
             let dotRect = NSRect(x: centerX - 1, y: 4.5, width: 2, height: 2)
             NSBezierPath(ovalIn: dotRect).fill()
+
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+
+    /// Circular arrow icon — indicates the user needs to restart the app.
+    static func drawRestartIcon() -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        let image = NSImage(size: size, flipped: false) { rect in
+            NSColor.black.setStroke()
+            NSColor.black.setFill()
+
+            let cx = rect.midX
+            let cy = rect.midY
+            let r: CGFloat = 5.5
+
+            // Circular arc (3/4 of a circle, gap at top-right)
+            let arc = NSBezierPath()
+            arc.appendArc(withCenter: NSPoint(x: cx - 1, y: cy), radius: r, startAngle: 150, endAngle: -60, clockwise: true)
+            arc.lineWidth = 1.8
+            arc.lineCapStyle = .round
+            arc.stroke()
+
+            // Arrowhead at the end of the arc
+            let tipAngle = CGFloat(-60.0 * .pi / 180.0)
+            let tipX = cx - 1 + r * cos(tipAngle)
+            let tipY = cy + r * sin(tipAngle)
+
+            let arrow = NSBezierPath()
+            arrow.move(to: NSPoint(x: tipX + 3, y: tipY + 1))
+            arrow.line(to: NSPoint(x: tipX, y: tipY))
+            arrow.line(to: NSPoint(x: tipX - 1, y: tipY + 3.5))
+            arrow.lineWidth = 1.8
+            arrow.lineCapStyle = .round
+            arrow.lineJoinStyle = .round
+            arrow.stroke()
 
             return true
         }

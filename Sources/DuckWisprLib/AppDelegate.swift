@@ -15,6 +15,11 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
     private var accessibilityTimer: Timer?
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        // Kill any stale DuckWispr process from a previous version.
+        // Without this, updating the app leaves the old process running with
+        // old code and stale permission state — causing the lock icon to persist.
+        Permissions.killStaleInstances()
+
         statusBar = StatusBarController()
         recorder = AudioRecorder()
 
@@ -96,8 +101,18 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         Permissions.ensureMicrophone()
 
         if AXIsProcessTrusted() {
-            print("Accessibility: granted")
-            finishSetup()
+            if Permissions.isAccessibilityActuallyUsable() {
+                print("Accessibility: granted and usable")
+                finishSetup()
+            } else {
+                // macOS Sequoia: AXIsProcessTrusted() returns true but the TCC grant
+                // hasn't propagated to the current process. A restart is needed.
+                print("Accessibility: granted but NOT usable — TCC cache stale, restart required")
+                DispatchQueue.main.async {
+                    self.statusBar.state = .restartRequired
+                    self.statusBar.buildMenu()
+                }
+            }
         } else {
             print("Accessibility: not granted — entering non-blocking wait")
             DispatchQueue.main.async {
@@ -118,7 +133,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
                 // This replaces the old blocking busy-wait that ran on a background thread
                 // and could miss grants due to TCC cache staleness.
                 self.accessibilityTimer = Permissions.startAccessibilityPolling { [weak self] in
-                    self?.onAccessibilityGranted()
+                    self?.onAccessibilityPollDetected()
                 }
             }
         }
@@ -126,18 +141,32 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Accessibility permission recovery
 
-    /// Called by the accessibility poll timer when permission is detected.
-    private func onAccessibilityGranted() {
+    /// Called when the poll timer detects AXIsProcessTrusted() == true.
+    /// Verifies the grant is actually usable before proceeding.
+    private func onAccessibilityPollDetected() {
         accessibilityTimer?.invalidate()
         accessibilityTimer = nil
-        statusBar.recheckPermissionHandler = nil
-        finishSetup()
+
+        if Permissions.isAccessibilityActuallyUsable() {
+            print("Accessibility: grant verified and usable")
+            statusBar.recheckPermissionHandler = nil
+            finishSetup()
+        } else {
+            // TCC says granted but it's not effective in this process.
+            // This happens on macOS Sequoia when the grant was made while
+            // the process was running — the TCC cache is stale.
+            print("Accessibility: granted but not usable — showing restart prompt")
+            DispatchQueue.main.async {
+                self.statusBar.state = .restartRequired
+                self.statusBar.buildMenu()
+            }
+        }
     }
 
     /// Called when user clicks "Recheck Permission" in the menu.
     private func triggerAccessibilityRecheck() {
         if AXIsProcessTrusted() {
-            onAccessibilityGranted()
+            onAccessibilityPollDetected()
         } else {
             // Re-trigger the native prompt in case the user missed it
             Permissions.promptAccessibility()
@@ -570,12 +599,25 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         let label = "com.duckwispr.dictation"
         let plistPath = NSHomeDirectory() + "/Library/LaunchAgents/\(label).plist"
 
-        // Already installed — nothing to do
-        guard !FileManager.default.fileExists(atPath: plistPath) else { return }
+        let currentExecPath = Bundle.main.executablePath ?? "/Applications/DuckWispr.app/Contents/MacOS/duck-wispr"
+
+        // Check if existing plist points to the correct binary.
+        // If the app was moved/reinstalled, the old path would launch the wrong binary.
+        if FileManager.default.fileExists(atPath: plistPath) {
+            if let existingData = try? Data(contentsOf: URL(fileURLWithPath: plistPath)),
+               let existing = try? PropertyListSerialization.propertyList(from: existingData, options: [], format: nil) as? [String: Any],
+               let args = existing["ProgramArguments"] as? [String],
+               args.first == currentExecPath {
+                // Correct binary path — nothing to do
+                return
+            }
+            // Path mismatch — rewrite the plist to point to the current binary
+            print("Launch agent: updating binary path to \(currentExecPath)")
+        }
 
         let plist: [String: Any] = [
             "Label": label,
-            "ProgramArguments": [Bundle.main.executablePath ?? "/Applications/DuckWispr.app/Contents/MacOS/duck-wispr", "start"],
+            "ProgramArguments": [currentExecPath, "start"],
             "RunAtLoad": true,
             "KeepAlive": false,
             "ProcessType": "Interactive",

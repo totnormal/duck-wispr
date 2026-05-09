@@ -161,12 +161,20 @@ PLIST
 
 # ── 8. Code sign ──────────────────────────────────────────────────
 info "Code signing (ad-hoc)..."
+# Sign leaf entities first, then the app bundle (inside-out order).
 for dylib in "$FW_DIR"/*.dylib; do
     codesign --force --sign - "$dylib" 2>/dev/null || true
 done
 codesign --force --sign - "$MACOS_DIR/whisper-cli" 2>/dev/null || true
 codesign --force --sign - "$MACOS_DIR/${CLI_NAME}" 2>/dev/null || true
-codesign --force --sign - --identifier "$BUNDLE_ID" "$APP_DIR" 2>/dev/null || true
+# Sign the app bundle last with explicit identifier and options
+# --options runtime would require a Developer ID, but we add timestamp
+# for consistency across builds to reduce TCC invalidation.
+codesign --force --sign - --identifier "$BUNDLE_ID" --timestamp "$APP_DIR" 2>/dev/null || true
+
+# Remove quarantine xattr from the entire staging dir so the DMG
+# contents don't trigger Gatekeeper when mounted on another machine.
+xattr -cr "$STAGING_DIR" 2>/dev/null || true
 
 # ── 9. Verify ──────────────────────────────────────────────────────
 info "Verifying whisper-cli can find its libraries..."
@@ -187,19 +195,20 @@ cat > "$STAGING_DIR/INSTALL.txt" << 'TXT'
 
 1. Drag DuckWispr.app to the Applications folder.
 
-2. FIRST LAUNCH: Right-click (or Control-click) on DuckWispr.app
+2. If replacing an older version, the old app will be
+   automatically stopped before the new one starts.
+
+3. FIRST LAUNCH: Right-click (or Control-click) on DuckWispr.app
    in /Applications and select "Open". This bypasses Gatekeeper.
 
-3. If macOS still blocks the app:
-   -> System Settings -> Privacy & Security -> scroll down
-   -> Click "Open Anyway" next to DuckWispr.
-
-4. Grant Microphone + Accessibility permissions when prompted.
-
-5. If transcription fails with "dylib not found":
+4. If macOS still blocks the app:
    -> Open Terminal
    -> Run: xattr -cr /Applications/DuckWispr.app
    -> Then: open /Applications/DuckWispr.app
+
+5. Grant Microphone + Accessibility permissions when prompted.
+   IMPORTANT: After granting Accessibility, if the app shows a
+   restart icon, click "Restart DuckWispr Now" in the menu.
 
 6. The app downloads a Whisper model on first launch (~500 MB).
 
